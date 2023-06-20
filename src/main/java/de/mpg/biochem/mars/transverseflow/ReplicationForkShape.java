@@ -55,11 +55,15 @@ import net.imglib2.view.Views;
 
 public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
 
-    public double[] x, y;
+    public double[] parentalX, parentalY, leadingX, leadingY, laggingX, laggingY;
 
-    public ReplicationForkShape(final double[] x, final double[] y) {
-        this.x = x;
-        this.y = y;
+    public ReplicationForkShape(final double[] parentalX, final double[] parentalY, final double[] leadingX, final double[] leadingY, final double[] laggingX, final double[] laggingY) {
+        this.parentalX = parentalX;
+        this.parentalY = parentalY;
+        this.leadingX = leadingX;
+        this.leadingY = leadingY;
+        this.laggingX = laggingX;
+        this.laggingY = laggingY;
     }
 
     public ReplicationForkShape(JsonParser jParser) throws IOException {
@@ -67,10 +71,43 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
         fromJSON(jParser);
     }
 
-    public double length() {
+    public double parentalLength() {
+        return length(parentalX, parentalY);
+    }
 
-        //TODO update me
-        /*
+    public double[] getParentalX() {
+        return parentalX;
+    }
+
+    public double[] getParentalY() {
+        return parentalY;
+    }
+
+    public double[] getLeadingX() {
+        return leadingX;
+    }
+
+    public double[] getLeadingY() {
+        return leadingY;
+    }
+
+    public double[] getLaggingX() {
+        return laggingX;
+    }
+
+    public double[] getLaggingY() {
+        return laggingY;
+    }
+
+    public double leadingLength() {
+        return length(leadingX, leadingY);
+    }
+
+    public double laggingLength() {
+        return length(laggingX, laggingY);
+    }
+
+    private double length(final double[] x, final double[] y) {
         final int nPoints = x.length;
         if (nPoints < 2) return 0;
 
@@ -80,45 +117,94 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
             final double dy = y[i + 1] - y[i];
             length += Math.sqrt(dx * dx + dy * dy);
         }
-
-        final double dx0 = x[0] - x[nPoints - 1];
-        final double dy0 = y[0] - y[nPoints - 1];
-        length += Math.sqrt(dx0 * dx0 + dy0 * dy0);
-
         return length;
-         */
     }
 
     @Override
     protected void createIOMaps() {
-        //TODO update me...
-        /*
-        setJsonField("vertices", jGenerator -> jGenerator.writeNumberField(
-                "vertices", x.length), jParser -> {
-            final int vertices = jParser.getIntValue();
-            x = new double[vertices];
-            y = new double[vertices];
+
+        //Parental
+        setJsonField("parentalPoints", jGenerator -> jGenerator.writeNumberField(
+                "parentalPoints", parentalX.length), jParser -> {
+            final int parentalPoints = jParser.getIntValue();
+            parentalX = new double[parentalPoints];
+            parentalY = new double[parentalPoints];
         });
-        setJsonField("x", jGenerator -> {
-            jGenerator.writeFieldName("x");
-            jGenerator.writeArray(x, 0, x.length);
+        setJsonField("parentalX", jGenerator -> {
+            jGenerator.writeFieldName("parentalX");
+            jGenerator.writeArray(parentalX, 0, parentalX.length);
         }, jParser -> {
             int xIndex = 0;
             while (jParser.nextToken() != JsonToken.END_ARRAY) {
-                x[xIndex] = jParser.getDoubleValue();
+                parentalX[xIndex] = jParser.getDoubleValue();
                 xIndex++;
             }
         });
         setJsonField("y", jGenerator -> {
-            jGenerator.writeFieldName("y");
-            jGenerator.writeArray(y, 0, y.length);
+            jGenerator.writeFieldName("parentalY");
+            jGenerator.writeArray(parentalY, 0, parentalY.length);
         }, jParser -> {
             int yIndex = 0;
             while (jParser.nextToken() != JsonToken.END_ARRAY) {
-                y[yIndex] = jParser.getDoubleValue();
+                parentalY[yIndex] = jParser.getDoubleValue();
                 yIndex++;
             }
         });
-         */
+
+        //Leading
+        setJsonField("leadingPoints", jGenerator -> jGenerator.writeNumberField(
+                "leadingPoints", leadingX.length), jParser -> {
+            final int leadingPoints = jParser.getIntValue();
+            leadingX = new double[leadingPoints];
+            leadingY = new double[leadingPoints];
+        });
+        setJsonField("leadingX", jGenerator -> {
+            jGenerator.writeFieldName("leadingX");
+            jGenerator.writeArray(leadingX, 0, leadingX.length);
+        }, jParser -> {
+            int xIndex = 0;
+            while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                leadingX[xIndex] = jParser.getDoubleValue();
+                xIndex++;
+            }
+        });
+        setJsonField("y", jGenerator -> {
+            jGenerator.writeFieldName("leadingY");
+            jGenerator.writeArray(leadingY, 0, leadingY.length);
+        }, jParser -> {
+            int yIndex = 0;
+            while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                leadingY[yIndex] = jParser.getDoubleValue();
+                yIndex++;
+            }
+        });
+
+        //Lagging
+        setJsonField("laggingPoints", jGenerator -> jGenerator.writeNumberField(
+                "laggingPoints", laggingX.length), jParser -> {
+            final int laggingPoints = jParser.getIntValue();
+            laggingX = new double[laggingPoints];
+            laggingY = new double[laggingPoints];
+        });
+        setJsonField("laggingX", jGenerator -> {
+            jGenerator.writeFieldName("laggingX");
+            jGenerator.writeArray(laggingX, 0, laggingX.length);
+        }, jParser -> {
+            int xIndex = 0;
+            while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                laggingX[xIndex] = jParser.getDoubleValue();
+                xIndex++;
+            }
+        });
+        setJsonField("y", jGenerator -> {
+            jGenerator.writeFieldName("laggingY");
+            jGenerator.writeArray(laggingY, 0, laggingY.length);
+        }, jParser -> {
+            int yIndex = 0;
+            while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                laggingY[yIndex] = jParser.getDoubleValue();
+                yIndex++;
+            }
+        });
     }
 }
