@@ -52,7 +52,6 @@ import org.scijava.plugin.SciJavaPlugin;
 import bdv.util.BdvOverlay;
 import de.mpg.biochem.mars.fx.bdv.MarsBdvCard;
 import de.mpg.biochem.mars.fx.bdv.MarsBdvFrame;
-import de.mpg.biochem.mars.image.PeakShape;
 import de.mpg.biochem.mars.metadata.MarsMetadata;
 import de.mpg.biochem.mars.molecule.AbstractJsonConvertibleRecord;
 import de.mpg.biochem.mars.molecule.Molecule;
@@ -66,7 +65,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 {
 
 	private JTextField outlineThickness;
-	private JCheckBox showTransverseFlow;
 
 	private JPanel panel;
 
@@ -88,8 +86,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 		panel = new JPanel();
 		panel.setLayout(new GridLayout(0, 2));
 
-		showTransverseFlow = new JCheckBox("show", false);
-		panel.add(showTransverseFlow);
 		panel.add(new JPanel());
 
 		panel.add(new JLabel("thickness"));
@@ -100,10 +96,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 		outlineThickness.setMinimumSize(dimScaleField);
 
 		panel.add(outlineThickness);
-	}
-
-	public boolean showTransverseFlow() {
-		return showTransverseFlow.isSelected();
 	}
 
 	@Override
@@ -151,7 +143,7 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 
 		@Override
 		protected void draw(Graphics2D g) {
-			if (showTransverseFlow.isSelected() && ((MartianTransverseFlow) molecule).hasShape(info
+			if (((TransverseFlowMolecule) molecule).hasShape(info
 				.getTimePointIndex()))
 			{
 				AffineTransform2D transform = new AffineTransform2D();
@@ -161,7 +153,7 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 				g.setStroke(new BasicStroke(Integer.valueOf(outlineThickness
 					.getText())));
 
-				PeakShape shape = ((MartianTransverseFlow) molecule).getShape(info
+				ReplicationForkShape shape = ((TransverseFlowMolecule) molecule).getShape(info
 					.getTimePointIndex());
 
 				boolean sourceInitialized = false;
@@ -169,9 +161,9 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 				int ySource = 0;
 				int x1 = 0;
 				int y1 = 0;
-				for (int pIndex = 0; pIndex < shape.x.length; pIndex++) {
-					double x = shape.x[pIndex];
-					double y = shape.y[pIndex];
+				for (int pIndex = 0; pIndex < shape.parentalX.length; pIndex++) {
+					double x = shape.parentalX[pIndex];
+					double y = shape.parentalY[pIndex];
 
 					if (Double.isNaN(x) || Double.isNaN(y)) continue;
 
@@ -192,9 +184,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 					ySource = yTarget;
 					sourceInitialized = true;
 				}
-
-				if (x1 != xSource || y1 != ySource) g.drawLine(xSource, ySource, x1,
-					y1);
 			}
 		}
 
@@ -217,12 +206,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 
 	@Override
 	protected void createIOMaps() {
-
-		setJsonField("show", jGenerator -> {
-			if (showTransverseFlow != null) jGenerator.writeBooleanField("show", showTransverseFlow
-				.isSelected());
-		}, jParser -> showTransverseFlow.setSelected(jParser.getBooleanValue()));
-
 		setJsonField("thickness", jGenerator -> {
 			if (outlineThickness != null) jGenerator.writeStringField("thickness",
 				outlineThickness.getText());
