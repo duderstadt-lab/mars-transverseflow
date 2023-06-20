@@ -39,7 +39,7 @@ import java.io.IOException;
 import java.util.stream.Stream;
 
 public class TransverseFlowArchive extends
-	AbstractMoleculeArchive<TransverseFlowMolecule, MarsOMEMetadata, ObjectArchiveProperties, ObjectArchiveIndex>
+	AbstractMoleculeArchive<TransverseFlowMolecule, MarsOMEMetadata, TransverseFlowArchiveProperties, TransverseFlowArchiveIndex>
 {
 
 	public TransverseFlowArchive(String name) {
@@ -54,7 +54,7 @@ public class TransverseFlowArchive extends
 		super(name, table);
 	}
 
-	public ObjectArchive(String name, File file) throws
+	public TransverseFlowArchive(String name, File file) throws
 			IOException
 	{
 		super(name, file);

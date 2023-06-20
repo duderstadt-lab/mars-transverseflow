@@ -35,7 +35,6 @@ import org.scijava.display.Display;
 import org.scijava.plugin.Plugin;
 
 import de.mpg.biochem.mars.molecule.DnaMoleculeArchive;
-import de.mpg.biochem.mars.object.TransverseFlowArchive;
 
 /**
  * Display for {@link DnaMoleculeArchive}. This ensures that uiService.show()

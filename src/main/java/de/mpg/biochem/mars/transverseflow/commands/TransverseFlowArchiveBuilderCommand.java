@@ -38,6 +38,7 @@ import de.mpg.biochem.mars.metadata.MarsOMEUtils;
 import de.mpg.biochem.mars.molecule.MoleculeArchiveService;
 import de.mpg.biochem.mars.object.ObjectArchive;
 import de.mpg.biochem.mars.table.MarsTableService;
+import de.mpg.biochem.mars.transverseflow.TransverseFlowArchive;
 import de.mpg.biochem.mars.util.LogBuilder;
 import de.mpg.biochem.mars.util.MarsMath;
 import de.mpg.biochem.mars.util.MarsUtil;
@@ -114,6 +115,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.io.File;
 
 @Plugin(type = Command.class, label = "Transverse Flow Archive Builder", menu = { @Menu(
 	label = MenuConstants.PLUGINS_LABEL, weight = MenuConstants.PLUGINS_WEIGHT,

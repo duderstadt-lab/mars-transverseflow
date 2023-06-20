@@ -86,9 +86,9 @@ public class TransverseFlowMolecule extends AbstractMolecule {
 	}
 
 	/**
-	 * Used to merge another MartianObject record into this one.
+	 * Used to merge another TransverseFlowMolecule record into this one.
 	 *
-	 * @param martianObject MartianObject to merge into this one.
+	 * @param transverseFlowMolecule TransverseFlowMolecule to merge into this one.
 	 */
 	public void merge(TransverseFlowMolecule transverseFlowMolecule) {
 		super.merge(transverseFlowMolecule);
