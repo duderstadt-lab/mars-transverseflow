@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>33.2.0</version>
+		<relativePath />
+	</parent>
+
+	<groupId>de.mpg.biochem</groupId>
+	<artifactId>mars-transverseflow</artifactId>
+	<version>0.1-SNAPSHOT</version>
+
+	<name>mars-transverseflow</name>
+	<description>Mars command and definitions for transverse flow molecule types.</description>
+	<url>https://github.com/duderstadt-lab/mars-transverseflow</url>
+	<inceptionYear>2023</inceptionYear>
+	<organization>
+		<name>Max Planck Institute of Biochemistry</name>
+		<url>https://biochem.mpg.de/</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>bsd_2</name>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<developers>
+		<!-- See https://imagej.net/Team -->
+		<developer>
+			<id>karlduderstadt</id>
+			<name>Karl Duderstadt</name>
+			<url>https://biochem.mpg.de/duderstadt/</url>
+			<roles>
+				<role>founder</role>
+				<role>lead</role>
+				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>Thomas Retzer</name>
+		</contributor>
+	</contributors>
+
+	<mailingLists>
+		<mailingList>
+			<name>Duderstadt Lab</name>
+			<archive>https://duderstadtlab.org/</archive>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:git://github.com/duderstadt-lab/mars-transverseflow</connection>
+		<developerConnection>scm:git:git@github.com:duderstadt-lab/mars-transverseflow</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/duderstadt-lab/mars-transverseflow</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/duderstadt-lab/mars-transverseflow/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>GitHub Actions</system>
+		<url>https://github.com/duderstadt-lab/mars-transverseflow/actions</url>
+	</ciManagement>
+
+	<properties>
+		<package-name>de.mpg.biochem.mars.transverseflow</package-name>
+		<license.copyrightOwners>Karl Duderstadt</license.copyrightOwners>
+		<license.licenseName>bsd_2</license.licenseName>
+		<license.excludes>**/resources/**</license.excludes>
+
+		<!-- NB: Deploy releases to the SciJava Maven repository. -->
+		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
+
+		<mars-core.version>1.0.0-beta-44</mars-core.version>
+		<mars-fx.version>0.5.11</mars-fx.version>
+
+		<jackson.version>2.11.2</jackson.version>
+		<jackson-core.version>${jackson.version}</jackson-core.version>
+		<jackson-dataformat-smile.version>${jackson.version}</jackson-dataformat-smile.version>
+	</properties>
+
+	<dependencies>
+		<!-- Mars dependencies -->
+		<dependency>
+			<groupId>de.mpg.biochem</groupId>
+			<artifactId>mars-core</artifactId>
+			<version>${mars-core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>de.mpg.biochem</groupId>
+			<artifactId>mars-fx</artifactId>
+			<version>${mars-fx.version}</version>
+		</dependency>
+
+		<!-- ImageJ dependencies -->
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>imagej-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>imagej-ops</artifactId>
+		</dependency>
+
+		<!-- ImgLib2 dependencies -->
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-realtransform</artifactId>
+		</dependency>
+
+		<!-- SciJava dependencies -->
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-table</artifactId>
+		</dependency>
+
+		<!-- BigDataViewer dependencies -->
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>bigdataviewer-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>bigdataviewer-vistools</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>spim_data</artifactId>
+		</dependency>
+
+		<!-- Third party dependencies -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-smile</artifactId>
+			<version>${jackson-dataformat-smile.version}</version>
+		</dependency>
+	</dependencies>
+
+	<repositories>
+		<repository>
+			<id>scijava.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+	</repositories>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<encoding>UTF-8</encoding>
+					<compilerArgs>
+						<arg>-parameters</arg>
+					</compilerArgs>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
