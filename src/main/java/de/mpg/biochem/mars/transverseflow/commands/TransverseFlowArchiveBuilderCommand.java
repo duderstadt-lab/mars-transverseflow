@@ -29,24 +29,22 @@
 
 package de.mpg.biochem.mars.transverseflow.commands;
 
-import de.mpg.biochem.mars.image.MarsImageUtils;
-import de.mpg.biochem.mars.image.Peak;
-import de.mpg.biochem.mars.image.PeakShape;
-import de.mpg.biochem.mars.image.PeakTracker;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import de.mpg.biochem.mars.metadata.MarsOMEMetadata;
 import de.mpg.biochem.mars.metadata.MarsOMEUtils;
 import de.mpg.biochem.mars.molecule.MoleculeArchiveService;
-import de.mpg.biochem.mars.object.ObjectArchive;
 import de.mpg.biochem.mars.table.MarsTableService;
+import de.mpg.biochem.mars.transverseflow.ReplicationForkShape;
 import de.mpg.biochem.mars.transverseflow.TransverseFlowArchive;
+import de.mpg.biochem.mars.transverseflow.TransverseFlowMolecule;
+import de.mpg.biochem.mars.util.DefaultJsonConverter;
 import de.mpg.biochem.mars.util.LogBuilder;
 import de.mpg.biochem.mars.util.MarsMath;
-import de.mpg.biochem.mars.util.MarsUtil;
 import ij.ImagePlus;
-import ij.gui.Overlay;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
-import ij.plugin.frame.RoiManager;
 import ij.process.FloatPolygon;
 import io.scif.Metadata;
 import io.scif.img.SCIFIOImgPlus;
@@ -57,45 +55,14 @@ import io.scif.services.TranslatorService;
 import loci.common.services.ServiceException;
 import net.imagej.Dataset;
 import net.imagej.ImgPlus;
-import net.imagej.axis.Axes;
 import net.imagej.display.ImageDisplay;
 import net.imagej.ops.OpService;
-import net.imglib2.Interval;
-import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.RealLocalizable;
-import net.imglib2.algorithm.labeling.ConnectedComponents.StructuringElement;
-import net.imglib2.algorithm.neighborhood.HyperSphereShape;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.outofbounds.OutOfBoundsMirrorFactory;
-import net.imglib2.outofbounds.OutOfBoundsMirrorFactory.Boundary;
-import net.imglib2.realtransform.RealViews;
-import net.imglib2.realtransform.Scale;
-import net.imglib2.roi.geom.real.Polygon2D;
-import net.imglib2.roi.labeling.ImgLabeling;
-import net.imglib2.roi.labeling.LabelRegion;
-import net.imglib2.roi.labeling.LabelRegions;
-import net.imglib2.type.NativeType;
-import net.imglib2.type.logic.BitType;
-import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.integer.UnsignedShortType;
-import net.imglib2.util.Intervals;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.Views;
-import ome.units.quantity.Length;
 import ome.xml.meta.OMEXMLMetadata;
-import ome.xml.model.enums.EnumerationException;
-import ome.xml.model.enums.UnitsLength;
-import ome.xml.model.enums.handlers.UnitsLengthEnumHandler;
-import ome.xml.model.primitives.PositiveInteger;
-import org.decimal4j.util.DoubleRounder;
 import org.scijava.Initializable;
 import org.scijava.ItemIO;
 import org.scijava.ItemVisibility;
-import org.scijava.app.StatusService;
 import org.scijava.command.Command;
 import org.scijava.command.DynamicCommand;
-import org.scijava.command.Previewable;
 import org.scijava.convert.ConvertService;
 import org.scijava.event.EventService;
 import org.scijava.log.LogService;
@@ -104,25 +71,18 @@ import org.scijava.module.MutableModuleItem;
 import org.scijava.plugin.Menu;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import org.scijava.ui.DialogPrompt.MessageType;
-import org.scijava.ui.DialogPrompt.OptionType;
 import org.scijava.ui.UIService;
 import org.scijava.widget.ChoiceWidget;
-import org.scijava.widget.NumberWidget;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
-import java.io.File;
+import java.io.*;
+import java.util.*;
 
 @Plugin(type = Command.class, label = "Transverse Flow Archive Builder", menu = { @Menu(
 	label = MenuConstants.PLUGINS_LABEL, weight = MenuConstants.PLUGINS_WEIGHT,
 	mnemonic = MenuConstants.PLUGINS_MNEMONIC), @Menu(label = "Mars",
 		weight = MenuConstants.PLUGINS_WEIGHT, mnemonic = 'm'), @Menu(
 			label = "Molecule", weight = 1, mnemonic = 'm'), @Menu(
-				label = "Transverse Flow Archive Builder", weight = 4, mnemonic = 't') })
+				label = "Build Transverse Flow Archive", weight = 4, mnemonic = 't') })
 public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implements Command,
 	Initializable
 {
@@ -188,6 +148,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Transverse Flow Archive", type = ItemIO.OUTPUT)
 	private TransverseFlowArchive archive;
 
+	private static JsonFactory jfactory;
 	private Dataset dataset;
 	private ImagePlus image;
 
@@ -224,8 +185,16 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		MarsOMEMetadata marsOMEMetadata = buildOMEMetadata();
 		archive.putMetadata(marsOMEMetadata);
 
-		//TODO Here we need to use the input directory with the label files to build the TranverseFlowMolecule records
-		//and add them to the archive.
+		if (jfactory == null) jfactory = new JsonFactory();
+
+		String[] labelFileList = labelDirectory.list((dir, name) -> name.endsWith(".labeling"));
+
+		if (labelFileList != null)
+			for (String fileName : labelFileList) {
+				TransverseFlowMolecule molecule = createTransverseFlowMolecule(new File(labelDirectory.getAbsolutePath() + "/" + fileName));
+				molecule.setMetadataUID(marsOMEMetadata.getUID());
+				archive.put(molecule);
+			}
 
 		// Make sure the output archive has the correct name
 		getInfo().getMutableOutput("archive", TransverseFlowArchive.class).setLabel(archive
@@ -235,6 +204,145 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		log += "\n" + LogBuilder.endBlock(true);
 		archive.logln(log);
 		archive.logln("   ");
+	}
+
+	private TransverseFlowMolecule createTransverseFlowMolecule(File labelingFile) {
+		Map<Integer, double[]> parentalXMap = new HashMap<>();
+		Map<Integer, double[]> parentalYMap = new HashMap<>();
+		Map<Integer, double[]> leadingXMap = new HashMap<>();
+		Map<Integer, double[]> leadingYMap = new HashMap<>();
+		Map<Integer, double[]> laggingXMap = new HashMap<>();
+		Map<Integer, double[]> laggingYMap = new HashMap<>();
+
+		DefaultJsonConverter defaultParser = new DefaultJsonConverter();
+		defaultParser.setShowWarnings(false);
+		defaultParser.setJsonField("labels", null, jParser -> {
+			while (jParser.nextToken() != JsonToken.END_OBJECT) {
+				String fieldName = jParser.getCurrentName();
+				if (fieldName.equals("parental")) parsePointsToMaps(jParser, parentalXMap, parentalYMap, 0);
+				if (fieldName.equals("leading")) parsePointsToMaps(jParser, leadingXMap, leadingYMap, 0);
+				if (fieldName.equals("lagging")) parsePointsToMaps(jParser, laggingXMap, laggingYMap, 1);
+			}
+		});
+
+		try {
+			InputStream inputStream = new BufferedInputStream(new FileInputStream(
+					labelingFile));
+			JsonParser jParser = jfactory.createParser(inputStream);
+			defaultParser.fromJSON(jParser);
+			jParser.close();
+			inputStream.close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		int sizeT = archive.getMetadata(0).getImage(0).getSizeT();
+
+		TransverseFlowMolecule molecule = new TransverseFlowMolecule();
+		for (int t = 0; t < sizeT; t++) {
+			ReplicationForkShape repliShape = new ReplicationForkShape((parentalXMap.containsKey(t)) ? parentalXMap.get(t) : new double[0],
+					(parentalYMap.containsKey(t)) ? parentalYMap.get(t) : new double[0],
+					(leadingXMap.containsKey(t)) ? leadingXMap.get(t) : new double[0],
+					(leadingYMap.containsKey(t)) ? leadingYMap.get(t) : new double[0],
+					(laggingXMap.containsKey(t)) ? laggingXMap.get(t) : new double[0],
+					(laggingYMap.containsKey(t)) ? laggingYMap.get(t) : new double[0]
+			);
+			molecule.putShape(t, repliShape);
+		}
+		return molecule;
+	}
+
+	private void parsePointsToMaps(JsonParser jParser, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, int sortAxis) throws IOException {
+		jParser.nextToken();
+		List<Point2D> points = new ArrayList<>();
+		int curT = -1;
+		while (jParser.nextToken() != JsonToken.END_ARRAY) {
+			jParser.nextToken();
+			int x = jParser.getIntValue();
+
+			jParser.nextToken();
+			int y = jParser.getIntValue();
+
+			points.add(new Point2D(x, y));
+			jParser.nextToken();
+			int t = jParser.getIntValue();
+			if (curT == -1) curT = t;
+
+			if (t != curT) {
+
+				calculatePolygons(points, curT, tToXMap, tToYMap, sortAxis);
+				points.clear();
+				curT = t;
+			}
+
+			//Move past the end of the point array
+			jParser.nextToken();
+		}
+
+		calculatePolygons(points, curT, tToXMap, tToYMap, sortAxis);
+		points.clear();
+	}
+
+	private void calculatePolygons(List<Point2D> points, int curT, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, int sortAxis) {
+		if (sortAxis == 0) points.sort(Comparator.comparing(Point2D::getX));
+		else if (sortAxis == 1) points.sort(Comparator.comparing(Point2D::getY));
+		float[] xPoints = new float[points.size()];
+		float[] yPoints = new float[points.size()];
+		for (int i = 0; i < points.size(); i++) {
+			xPoints[i] = points.get(i).getX();
+			yPoints[i] = points.get(i).getY();
+		}
+
+		//Now let's do some smoothing
+		PolygonRoi r = new PolygonRoi(xPoints, yPoints, Roi.POLYLINE);
+		r = new PolygonRoi(r.getInterpolatedPolygon(1, false), Roi.POLYLINE);
+		r = smoothPolygonRoi(r);
+		r = new PolygonRoi(r.getInterpolatedPolygon(Math.min(2, r
+				.getNCoordinates() * 0.1), false), Roi.POLYLINE);
+
+		FloatPolygon fPoly = r.getFloatPolygon();
+
+		double[] xDoublePoints = new double[fPoly.xpoints.length];
+		double[] yDoublePoints = new double[fPoly.ypoints.length];
+		for (int i = 0; i < xDoublePoints.length; i++) {
+			xDoublePoints[i] = fPoly.xpoints[i];
+			yDoublePoints[i] = fPoly.ypoints[i];
+		}
+
+		tToXMap.put(curT, xDoublePoints);
+		tToYMap.put(curT, yDoublePoints);
+	}
+
+	private PolygonRoi smoothPolygonRoi(PolygonRoi r) {
+		FloatPolygon poly = r.getFloatPolygon();
+		FloatPolygon poly2 = new FloatPolygon();
+		int nPoints = poly.npoints;
+		poly2.addPoint(poly.xpoints[0], poly.ypoints[0]);
+		for (int i = 1; i < nPoints; i += 2) {
+			int iMinus = (i + nPoints - 1) % nPoints;
+			int iPlus = (i + 1) % nPoints;
+			if (iPlus != 0)
+				poly2.addPoint((poly.xpoints[iMinus] + poly.xpoints[iPlus] +
+						poly.xpoints[i]) / 3, (poly.ypoints[iMinus] + poly.ypoints[iPlus] +
+						poly.ypoints[i]) / 3);
+		}
+		poly2.addPoint(poly.xpoints[poly.xpoints.length - 1], poly.ypoints[poly.ypoints.length - 1]);
+		return new PolygonRoi(poly2, Roi.POLYLINE);
+	}
+
+	private class Point2D {
+		final int x, y;
+		Point2D(int x, int y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		int getX() {
+			return x;
+		}
+
+		int getY() {
+			return y;
+		}
 	}
 
 	private MarsOMEMetadata buildOMEMetadata() {

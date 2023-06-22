@@ -108,7 +108,7 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
                 xIndex++;
             }
         });
-        setJsonField("y", jGenerator -> {
+        setJsonField("parentalY", jGenerator -> {
             jGenerator.writeFieldName("parentalY");
             jGenerator.writeArray(parentalY, 0, parentalY.length);
         }, jParser -> {
@@ -136,7 +136,7 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
                 xIndex++;
             }
         });
-        setJsonField("y", jGenerator -> {
+        setJsonField("leadingY", jGenerator -> {
             jGenerator.writeFieldName("leadingY");
             jGenerator.writeArray(leadingY, 0, leadingY.length);
         }, jParser -> {
@@ -164,7 +164,7 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
                 xIndex++;
             }
         });
-        setJsonField("y", jGenerator -> {
+        setJsonField("laggingY", jGenerator -> {
             jGenerator.writeFieldName("laggingY");
             jGenerator.writeArray(laggingY, 0, laggingY.length);
         }, jParser -> {

@@ -29,51 +29,34 @@
 
 package de.mpg.biochem.mars.transverseflow;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.GridLayout;
-import java.util.Random;
-
-import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-
-import net.imagej.ops.Initializable;
-import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.type.numeric.ARGBType;
-
-import org.scijava.plugin.Parameter;
-import org.scijava.plugin.Plugin;
-import org.scijava.plugin.SciJavaPlugin;
-
 import bdv.util.BdvOverlay;
 import de.mpg.biochem.mars.fx.bdv.MarsBdvCard;
 import de.mpg.biochem.mars.fx.bdv.MarsBdvFrame;
 import de.mpg.biochem.mars.metadata.MarsMetadata;
-import de.mpg.biochem.mars.molecule.AbstractJsonConvertibleRecord;
-import de.mpg.biochem.mars.molecule.Molecule;
-import de.mpg.biochem.mars.molecule.MoleculeArchive;
-import de.mpg.biochem.mars.molecule.MoleculeArchiveIndex;
-import de.mpg.biochem.mars.molecule.MoleculeArchiveProperties;
+import de.mpg.biochem.mars.molecule.*;
+import net.imagej.ops.Initializable;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.type.numeric.ARGBType;
+import org.scijava.plugin.Parameter;
+import org.scijava.plugin.Plugin;
+import org.scijava.plugin.SciJavaPlugin;
 
-@Plugin(type = MarsBdvCard.class, name = "TransverseFlow-Overlay")
-public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
+import javax.swing.*;
+import java.awt.*;
+
+@Plugin(type = MarsBdvCard.class, name = "Lagging")
+public class LaggingTransverseFlowCard extends AbstractJsonConvertibleRecord implements
 	MarsBdvCard, SciJavaPlugin, Initializable
 {
 
-	private JTextField outlineThickness;
+	private JTextField lineThickness;
 
 	private JPanel panel;
 
-	private TransverseFlowOverlay TransverseFlowOverlay;
+	private LaggingTransverseFlowOverlay laggingTransverseFlowOverlay;
 	private Molecule molecule;
 
 	private boolean active = false;
-
-	public Random ran = new Random();
 
 	@Parameter
 	protected MoleculeArchive<Molecule, MarsMetadata, MoleculeArchiveProperties<Molecule, MarsMetadata>, MoleculeArchiveIndex<Molecule, MarsMetadata>> archive;
@@ -86,16 +69,14 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 		panel = new JPanel();
 		panel.setLayout(new GridLayout(0, 2));
 
-		panel.add(new JPanel());
+		panel.add(new JLabel("Thickness"));
 
-		panel.add(new JLabel("thickness"));
-
-		outlineThickness = new JTextField(6);
-		outlineThickness.setText("5");
+		lineThickness = new JTextField(6);
+		lineThickness.setText("5");
 		Dimension dimScaleField = new Dimension(100, 20);
-		outlineThickness.setMinimumSize(dimScaleField);
+		lineThickness.setMinimumSize(dimScaleField);
 
-		panel.add(outlineThickness);
+		panel.add(lineThickness);
 	}
 
 	@Override
@@ -117,14 +98,14 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 
 	@Override
 	public String getName() {
-		return "TransverseFlow-Overlay";
+		return "Lagging";
 	}
 
 	@Override
 	public BdvOverlay getBdvOverlay() {
-		if (TransverseFlowOverlay == null) TransverseFlowOverlay = new TransverseFlowOverlay();
+		if (laggingTransverseFlowOverlay == null) laggingTransverseFlowOverlay = new LaggingTransverseFlowOverlay();
 
-		return TransverseFlowOverlay;
+		return laggingTransverseFlowOverlay;
 	}
 
 	@Override
@@ -137,9 +118,9 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 		this.active = active;
 	}
 
-	public class TransverseFlowOverlay extends BdvOverlay {
+	public class LaggingTransverseFlowOverlay extends BdvOverlay {
 
-		public TransverseFlowOverlay() {}
+		public LaggingTransverseFlowOverlay() {}
 
 		@Override
 		protected void draw(Graphics2D g) {
@@ -150,7 +131,7 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 				getCurrentTransform2D(transform);
 
 				g.setColor(getColor());
-				g.setStroke(new BasicStroke(Integer.valueOf(outlineThickness
+				g.setStroke(new BasicStroke(Integer.valueOf(lineThickness
 					.getText())));
 
 				ReplicationForkShape shape = ((TransverseFlowMolecule) molecule).getShape(info
@@ -159,11 +140,9 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 				boolean sourceInitialized = false;
 				int xSource = 0;
 				int ySource = 0;
-				int x1 = 0;
-				int y1 = 0;
-				for (int pIndex = 0; pIndex < shape.parentalX.length; pIndex++) {
-					double x = shape.parentalX[pIndex];
-					double y = shape.parentalY[pIndex];
+				for (int pIndex = 0; pIndex < shape.laggingX.length; pIndex++) {
+					double x = shape.laggingX[pIndex];
+					double y = shape.laggingY[pIndex];
 
 					if (Double.isNaN(x) || Double.isNaN(y)) continue;
 
@@ -175,10 +154,6 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 					int yTarget = (int) Math.round(viewerCoords[1]);
 
 					if (sourceInitialized) g.drawLine(xSource, ySource, xTarget, yTarget);
-					else {
-						x1 = xTarget;
-						y1 = yTarget;
-					}
 
 					xSource = xTarget;
 					ySource = yTarget;
@@ -207,8 +182,8 @@ public class TransverseFlowCard extends AbstractJsonConvertibleRecord implements
 	@Override
 	protected void createIOMaps() {
 		setJsonField("thickness", jGenerator -> {
-			if (outlineThickness != null) jGenerator.writeStringField("thickness",
-				outlineThickness.getText());
-		}, jParser -> outlineThickness.setText(jParser.getText()));
+			if (lineThickness != null) jGenerator.writeStringField("thickness",
+				lineThickness.getText());
+		}, jParser -> lineThickness.setText(jParser.getText()));
 	}
 }

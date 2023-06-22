@@ -71,11 +71,28 @@ public class TransverseFlowArchiveFxFrame extends
 	@Override
 	public MarsBdvFrame createMarsBdvFrame(boolean useVolatile) {
 		List<MarsBdvCard> cards = new ArrayList<MarsBdvCard>();
-		TransverseFlowCard card = new TransverseFlowCard();
-		context.inject(card);
-		card.setArchive(archive);
-		card.initialize();
-		cards.add(card);
+
+		//Parental
+		ParentalTransverseFlowCard parentalCard = new ParentalTransverseFlowCard();
+		context.inject(parentalCard);
+		parentalCard.setArchive(archive);
+		parentalCard.initialize();
+		cards.add(parentalCard);
+
+		//Leading
+		LeadingTransverseFlowCard leadingCard = new LeadingTransverseFlowCard();
+		context.inject(leadingCard);
+		leadingCard.setArchive(archive);
+		leadingCard.initialize();
+		cards.add(leadingCard);
+
+		//Lagging
+		LaggingTransverseFlowCard laggingCard = new LaggingTransverseFlowCard();
+		context.inject(laggingCard);
+		laggingCard.setArchive(archive);
+		laggingCard.initialize();
+		cards.add(laggingCard);
+
 		return new MarsBdvFrame(archive, moleculesTab.getSelectedMolecule(),
 			imageMetadataTab.getSelectedMetadata(), useVolatile, cards, context);
 	}
