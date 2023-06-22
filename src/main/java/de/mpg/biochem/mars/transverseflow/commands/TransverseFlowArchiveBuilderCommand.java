@@ -136,12 +136,14 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	/**
 	 * OUTPUTS
 	 */
+	@Parameter(label = "Smooth labels")
+	private boolean smooth = true;
 
-	@Parameter(label = "Microscope", style = "group:Output", required = false)
+	@Parameter(label = "Microscope", required = false)
  	private String microscope = "unknown";
 
 	@Parameter(label = "Metadata UID",
-		style = ChoiceWidget.RADIO_BUTTON_VERTICAL_STYLE + ", group:Output",
+		style = ChoiceWidget.RADIO_BUTTON_VERTICAL_STYLE,
 		choices = { "unique from dataset", "random" })
 	private String metadataUIDSource = "random";
 
@@ -248,6 +250,14 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			);
 			molecule.putShape(t, repliShape);
 		}
+
+		//TODO Create a MarsTable for this molecule that includes the following columns
+		// T, Time (s), Parental, Leading, Lagging, Parental + Leading, Force
+		// And in the future, maybe wrap length, polymerase position
+		// polymerase position should be added by the polymerase tracking plugin and
+		// we should allow for different colors of proteins at the fork for
+		// generality.
+
 		return molecule;
 	}
 
@@ -294,10 +304,12 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 
 		//Now let's do some smoothing
 		PolygonRoi r = new PolygonRoi(xPoints, yPoints, Roi.POLYLINE);
-		r = new PolygonRoi(r.getInterpolatedPolygon(1, false), Roi.POLYLINE);
-		r = smoothPolygonRoi(r);
-		r = new PolygonRoi(r.getInterpolatedPolygon(Math.min(2, r
+		if (smooth) {
+			r = new PolygonRoi(r.getInterpolatedPolygon(1, false), Roi.POLYLINE);
+			r = smoothPolygonRoi(r);
+			r = new PolygonRoi(r.getInterpolatedPolygon(Math.min(2, r
 				.getNCoordinates() * 0.1), false), Roi.POLYLINE);
+		}
 
 		FloatPolygon fPoly = r.getFloatPolygon();
 
@@ -429,6 +441,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			}
 		}
 		else builder.addParameter("Dataset Name", dataset.getName());
+		builder.addParameter("Smooth labels", smooth);
 		builder.addParameter("Microscope", microscope);
 		builder.addParameter("Metadata UID source", metadataUIDSource);
 	}
@@ -460,6 +473,14 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 
 	public String getMicroscope() {
 		return microscope;
+	}
+
+	public void setSmoothLabels(boolean smooth) {
+		this.smooth = smooth;
+	}
+
+	public boolean getSmoothLabels() {
+		return smooth;
 	}
 
 	public void setMetadataUIDSource(String metadataUIDSource) {
