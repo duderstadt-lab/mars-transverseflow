@@ -35,11 +35,13 @@ import com.fasterxml.jackson.core.JsonToken;
 import de.mpg.biochem.mars.metadata.MarsOMEMetadata;
 import de.mpg.biochem.mars.metadata.MarsOMEUtils;
 import de.mpg.biochem.mars.molecule.MoleculeArchiveService;
+import de.mpg.biochem.mars.table.MarsTable;
 import de.mpg.biochem.mars.table.MarsTableService;
 import de.mpg.biochem.mars.transverseflow.ReplicationForkShape;
 import de.mpg.biochem.mars.transverseflow.TransverseFlowArchive;
 import de.mpg.biochem.mars.transverseflow.TransverseFlowMolecule;
 import de.mpg.biochem.mars.util.DefaultJsonConverter;
+import de.mpg.biochem.mars.util.ForceCalculator;
 import de.mpg.biochem.mars.util.LogBuilder;
 import de.mpg.biochem.mars.util.MarsMath;
 import ij.ImagePlus;
@@ -139,8 +141,14 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Smooth labels")
 	private boolean smooth = true;
 
-	@Parameter(label = "Microscope", required = false)
- 	private String microscope = "unknown";
+	@Parameter(label = "Microscope")
+ 	private String microscope = "Winky";
+
+	@Parameter(label = "Pixel size (um)")
+	private double pixelSize = 0.156;
+
+	@Parameter(label = "DNA length (bps)")
+	private double lengthBps = 27000;
 
 	@Parameter(label = "Metadata UID",
 		style = ChoiceWidget.RADIO_BUTTON_VERTICAL_STYLE,
@@ -239,6 +247,16 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		}
 		int sizeT = archive.getMetadata(0).getImage(0).getSizeT();
 
+		MarsTable table = new MarsTable("TransverseFlowMolecule Table", "T",
+				"Time_(s)", "Parental_(um)", "Parental_(kb)",
+				"Leading_(um)", "Leading_(kb)",
+				"Lagging_(um)", "Lagging_(kb)",
+				"Parental_and_Leading_(um)", "Force_(pN)");
+		table.appendRows(sizeT);
+
+		ForceCalculator calculator = new ForceCalculator(50 * Math.pow(10, -9),
+				lengthBps*0.34 * Math.pow(10, -9), 296.15);
+
 		TransverseFlowMolecule molecule = new TransverseFlowMolecule();
 		for (int t = 0; t < sizeT; t++) {
 			ReplicationForkShape repliShape = new ReplicationForkShape((parentalXMap.containsKey(t)) ? parentalXMap.get(t) : new double[0],
@@ -249,15 +267,25 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 					(laggingYMap.containsKey(t)) ? laggingYMap.get(t) : new double[0]
 			);
 			molecule.putShape(t, repliShape);
+			double timeInSeconds = archive.getMetadata(0).getImage(0).getPlane(0, 0, t).getDeltaTinSeconds();
+			//These lengths are in pixels..
+			double parentalLength = repliShape.parentalLength();
+			double leadingLength = repliShape.leadingLength();
+			double laggingLength = repliShape.laggingLength();
+			double parentalAndLeading = parentalLength + leadingLength;
+
+			table.setValue("T", t, t);
+			table.setValue("Time_(s)", t, timeInSeconds);
+			table.setValue("Parental_(um)", t, parentalLength*pixelSize);
+			table.setValue("Parental_(kb)", t, (lengthBps/1000)*parentalLength/parentalAndLeading);
+			table.setValue("Leading_(um)", t, leadingLength*pixelSize);
+			table.setValue("Leading_(kb)", t, (lengthBps/1000)*leadingLength/parentalAndLeading);
+			table.setValue("Lagging_(um)", t, laggingLength*pixelSize);
+			table.setValue("Lagging_(kb)", t, (lengthBps/1000)*laggingLength/parentalAndLeading);
+			table.setValue("Parental_and_Leading_(um)", t, parentalAndLeading*pixelSize);
+			table.setValue("Force_(pN)", t, calculator.getWLCForce(parentalAndLeading * pixelSize * Math.pow(10, -6)) * Math.pow(10, 12));
 		}
-
-		//TODO Create a MarsTable for this molecule that includes the following columns
-		// T, Time (s), Parental, Leading, Lagging, Parental + Leading, Force
-		// And in the future, maybe wrap length, polymerase position
-		// polymerase position should be added by the polymerase tracking plugin and
-		// we should allow for different colors of proteins at the fork for
-		// generality.
-
+		molecule.setTable(table);
 		return molecule;
 	}
 
@@ -443,6 +471,8 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		else builder.addParameter("Dataset Name", dataset.getName());
 		builder.addParameter("Smooth labels", smooth);
 		builder.addParameter("Microscope", microscope);
+		builder.addParameter("Pixel size (um)", pixelSize);
+		builder.addParameter("DNA length (bps)", lengthBps);
 		builder.addParameter("Metadata UID source", metadataUIDSource);
 	}
 

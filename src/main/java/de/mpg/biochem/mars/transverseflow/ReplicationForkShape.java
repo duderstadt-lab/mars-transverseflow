@@ -75,6 +75,14 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
         return length(parentalX, parentalY);
     }
 
+    public double leadingLength() {
+        return length(leadingX, leadingY);
+    }
+
+    public double laggingLength() {
+        return length(laggingX, laggingY);
+    }
+
     private double length(final double[] x, final double[] y) {
         final int nPoints = x.length;
         if (nPoints < 2) return 0;
