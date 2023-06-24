@@ -29,6 +29,7 @@
 
 package de.mpg.biochem.mars.transverseflow;
 
+import javafx.scene.layout.StackPane;
 import org.scijava.Context;
 
 import de.mpg.biochem.mars.fx.molecule.AbstractMoleculesTab;
@@ -45,7 +46,8 @@ public class TransverseFlowTab extends
 		super(context);
 
 		Region transverseFlowMoleculeIcon = new Region();
-		transverseFlowMoleculeIcon.getStyleClass().add("objectIcon");
+		transverseFlowMoleculeIcon.getStylesheets().add("de/mpg/biochem/mars/transverseflow/TransverseFlowFrame.css");
+		transverseFlowMoleculeIcon.getStyleClass().add("transverseFlowIcon");
 
 		setIcon(transverseFlowMoleculeIcon, "Transverse Flow Molecules");
 	}
