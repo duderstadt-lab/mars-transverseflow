@@ -300,17 +300,16 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			jParser.nextToken();
 			int y = jParser.getIntValue();
 
-			points.add(new Point2D(x, y));
 			jParser.nextToken();
 			int t = jParser.getIntValue();
 			if (curT == -1) curT = t;
 
 			if (t != curT) {
-
 				calculatePolygons(points, curT, tToXMap, tToYMap, sortAxis);
 				points.clear();
 				curT = t;
 			}
+			points.add(new Point2D(x, y));
 
 			//Move past the end of the point array
 			jParser.nextToken();
