@@ -141,6 +141,9 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Smooth labels")
 	private boolean smooth = true;
 
+	@Parameter(label = "Label rescaling factor (label coordinates / factor)")
+	private float labelRescalingFactor = 1;
+
 	@Parameter(label = "Microscope")
  	private String microscope = "Winky";
 
@@ -295,10 +298,10 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		int curT = -1;
 		while (jParser.nextToken() != JsonToken.END_ARRAY) {
 			jParser.nextToken();
-			int x = jParser.getIntValue();
+			float x = jParser.getIntValue() / labelRescalingFactor;
 
 			jParser.nextToken();
-			int y = jParser.getIntValue();
+			float y = jParser.getIntValue() / labelRescalingFactor;
 
 			jParser.nextToken();
 			int t = jParser.getIntValue();
@@ -369,17 +372,17 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	}
 
 	private class Point2D {
-		final int x, y;
-		Point2D(int x, int y) {
+		final float x, y;
+		Point2D(float x, float y) {
 			this.x = x;
 			this.y = y;
 		}
 
-		int getX() {
+		float getX() {
 			return x;
 		}
 
-		int getY() {
+		float getY() {
 			return y;
 		}
 	}
@@ -469,6 +472,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		}
 		else builder.addParameter("Dataset Name", dataset.getName());
 		builder.addParameter("Smooth labels", smooth);
+		builder.addParameter("Label rescaling factor", labelRescalingFactor);
 		builder.addParameter("Microscope", microscope);
 		builder.addParameter("Pixel size (um)", pixelSize);
 		builder.addParameter("DNA length (bps)", lengthBps);
