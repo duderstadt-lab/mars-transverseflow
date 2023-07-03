@@ -144,6 +144,9 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Label rescaling factor (label coordinates / factor)")
 	private float labelRescalingFactor = 1;
 
+	@Parameter(label = "Label connectivity distance cutoff (pixel)")
+	private double connectivityCutoff = 3.1;
+
 	@Parameter(label = "Microscope")
  	private String microscope = "Winky";
 
@@ -232,9 +235,9 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		defaultParser.setJsonField("labels", null, jParser -> {
 			while (jParser.nextToken() != JsonToken.END_OBJECT) {
 				String fieldName = jParser.getCurrentName();
-				if (fieldName.equals("parental")) parsePointsToMaps(jParser, parentalXMap, parentalYMap, 0);
-				if (fieldName.equals("leading")) parsePointsToMaps(jParser, leadingXMap, leadingYMap, 0);
-				if (fieldName.equals("lagging")) parsePointsToMaps(jParser, laggingXMap, laggingYMap, 1);
+				if (fieldName.equals("parental")) parsePointsToMaps(jParser, parentalXMap, parentalYMap, fieldName);
+				if (fieldName.equals("leading")) parsePointsToMaps(jParser, leadingXMap, leadingYMap, fieldName);
+				if (fieldName.equals("lagging")) parsePointsToMaps(jParser, laggingXMap, laggingYMap, fieldName);
 			}
 		});
 
@@ -292,7 +295,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		return molecule;
 	}
 
-	private void parsePointsToMaps(JsonParser jParser, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, int sortAxis) throws IOException {
+	private void parsePointsToMaps(JsonParser jParser, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, String fieldName) throws IOException {
 		jParser.nextToken();
 		List<Point2D> points = new ArrayList<>();
 		int curT = -1;
@@ -308,7 +311,8 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			if (curT == -1) curT = t;
 
 			if (t != curT) {
-				calculatePolygons(points, curT, tToXMap, tToYMap, sortAxis);
+				points = (fieldName.equals("parental") || fieldName.equals("leading")) ? orderPoints(points, true) : orderPoints(points, false);
+				calculatePolygons(points, curT, tToXMap, tToYMap);
 				points.clear();
 				curT = t;
 			}
@@ -318,13 +322,13 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			jParser.nextToken();
 		}
 
-		calculatePolygons(points, curT, tToXMap, tToYMap, sortAxis);
-		points.clear();
+		points = (fieldName.equals("parental") || fieldName.equals("leading")) ? orderPoints(points, true) : orderPoints(points, false);
+		calculatePolygons(points, curT, tToXMap, tToYMap);
 	}
 
-	private void calculatePolygons(List<Point2D> points, int curT, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, int sortAxis) {
-		if (sortAxis == 0) points.sort(Comparator.comparing(Point2D::getX));
-		else if (sortAxis == 1) points.sort(Comparator.comparing(Point2D::getY));
+	private void calculatePolygons(List<Point2D> points, int curT, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap) {
+		//if (sortAxis == 0) points.sort(Comparator.comparing(Point2D::getX));
+		//else if (sortAxis == 1) points.sort(Comparator.comparing(Point2D::getY));
 		float[] xPoints = new float[points.size()];
 		float[] yPoints = new float[points.size()];
 		for (int i = 0; i < points.size(); i++) {
@@ -354,6 +358,45 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		tToYMap.put(curT, yDoublePoints);
 	}
 
+	private List<Point2D> orderPoints(List<Point2D> points, boolean fromLargestY) {
+		List<Point2D> orderedPoints = new ArrayList<>();
+		//Find the point in the list with the largest Y value
+		orderedPoints.add(points.get(0));
+		for (int i=1; i<points.size(); i++) {
+			if (fromLargestY)
+				if (points.get(i).getY() > orderedPoints.get(0).getY())
+					orderedPoints.set(0, points.get(i));
+			else
+				if (points.get(i).getY() < orderedPoints.get(0).getY())
+					orderedPoints.set(0, points.get(i));
+		}
+
+		orderedPoints.get(0).setConnected(true);
+		for (int i=0; i < points.size() - 1; i++) {
+			Point2D pos = orderedPoints.get(i);
+			Point2D bestConnection = null;
+			double bestDistance = Double.MAX_VALUE;
+			for (int j = 0; j < points.size(); j++) {
+				if (!points.get(j).connected()) {
+					double dX = pos.getX() - points.get(j).getX();
+					double dY = pos.getY() - points.get(j).getY();
+					double distance = Math.sqrt(dX * dX + dY * dY);
+					if (distance < bestDistance) {
+						bestDistance = distance;
+						bestConnection = points.get(j);
+					}
+				}
+			}
+			if (bestDistance < connectivityCutoff) {
+				orderedPoints.add(bestConnection);
+				bestConnection.setConnected(true);
+			} else
+				break;
+		}
+
+		return orderedPoints;
+	}
+
 	private PolygonRoi smoothPolygonRoi(PolygonRoi r) {
 		FloatPolygon poly = r.getFloatPolygon();
 		FloatPolygon poly2 = new FloatPolygon();
@@ -373,6 +416,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 
 	private class Point2D {
 		final float x, y;
+		boolean connected;
 		Point2D(float x, float y) {
 			this.x = x;
 			this.y = y;
@@ -384,6 +428,14 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 
 		float getY() {
 			return y;
+		}
+
+		boolean connected() {
+			return connected;
+		}
+
+		void setConnected(boolean connected) {
+			this.connected = connected;
 		}
 	}
 
@@ -473,6 +525,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		else builder.addParameter("Dataset Name", dataset.getName());
 		builder.addParameter("Smooth labels", smooth);
 		builder.addParameter("Label rescaling factor", labelRescalingFactor);
+		builder.addParameter("Label connectivity distance cutoff (pixel)", connectivityCutoff);
 		builder.addParameter("Microscope", microscope);
 		builder.addParameter("Pixel size (um)", pixelSize);
 		builder.addParameter("DNA length (bps)", lengthBps);
