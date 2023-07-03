@@ -75,6 +75,18 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
         return length(parentalX, parentalY);
     }
 
+    public double[] parentCenter() {
+        return centroid(parentalX, parentalY);
+    }
+
+    public double[] leadingCenter() {
+        return centroid(leadingX, leadingY);
+    }
+
+    public double[] laggingCenter() {
+        return centroid(laggingX, laggingY);
+    }
+
     public double leadingLength() {
         return length(leadingX, leadingY);
     }
@@ -94,6 +106,32 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
             length += Math.sqrt(dx * dx + dy * dy);
         }
         return length;
+    }
+
+    private static double[] centroid(final double[] x, final double[] y) {
+        final double area = signedArea(x, y);
+        double ax = 0.0;
+        double ay = 0.0;
+        final int n = x.length;
+        for (int i = 0; i < n - 1; i++) {
+            final double w = x[i] * y[i + 1] - x[i + 1] * y[i];
+            ax += (x[i] + x[i + 1]) * w;
+            ay += (y[i] + y[i + 1]) * w;
+        }
+
+        final double w0 = x[n - 1] * y[0] - x[0] * y[n - 1];
+        ax += (x[n - 1] + x[0]) * w0;
+        ay += (y[n - 1] + y[0]) * w0;
+        return new double[] { ax / 6. / area, ay / 6. / area };
+    }
+
+    private static double signedArea(final double[] x, final double[] y) {
+        final int n = x.length;
+        double a = 0.0;
+        for (int i = 0; i < n - 1; i++)
+            a += x[i] * y[i + 1] - x[i + 1] * y[i];
+
+        return (a + x[n - 1] * y[0] - x[0] * y[n - 1]) / 2.0;
     }
 
     @Override

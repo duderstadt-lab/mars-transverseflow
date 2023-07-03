@@ -291,6 +291,11 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			table.setValue("Parental_and_Leading_(um)", t, parentalAndLeading*pixelSize);
 			table.setValue("Force_(pN)", t, calculator.getWLCForce(parentalAndLeading * pixelSize * Math.pow(10, -6)) * Math.pow(10, 12));
 		}
+		if (molecule.hasShape(0)) {
+			double[] parentCenter = molecule.getShape(0).parentCenter();
+			molecule.setParameter("Parent_Center_X", parentCenter[0]);
+			molecule.setParameter("Parent_Center_Y", parentCenter[1]);
+		}
 		molecule.setTable(table);
 		return molecule;
 	}
