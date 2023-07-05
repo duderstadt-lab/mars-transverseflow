@@ -144,11 +144,17 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Smoothing cycles")
 	private int smoothingCyclces = 1;
 
+	@Parameter(label = "Maintain endpoint positions during smoothing")
+	private boolean endPointPreservation = false;
+
 	@Parameter(label = "Label rescaling factor (label coordinates / factor)")
 	private float labelRescalingFactor = 1;
 
 	@Parameter(label = "Label connectivity distance cutoff (pixel)")
 	private double connectivityCutoff = 3.1;
+
+	@Parameter(label = "connect parental and leading for arch length calculation")
+	private boolean bridgeParentalAndLeading = true;
 
 	@Parameter(label = "Microscope")
  	private String microscope = "Winky";
@@ -260,7 +266,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 				"Time_(s)", "Parental_(um)", "Parental_(kb)",
 				"Leading_(um)", "Leading_(kb)",
 				"Lagging_(um)", "Lagging_(kb)",
-				"Parental_and_Leading_(um)", "Force_(pN)");
+				"Arch_length_(um)", "Force_(pN)");
 		table.appendRows(sizeT);
 
 		ForceCalculator calculator = new ForceCalculator(50 * Math.pow(10, -9),
@@ -281,18 +287,18 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			double parentalLength = repliShape.parentalLength();
 			double leadingLength = repliShape.leadingLength();
 			double laggingLength = repliShape.laggingLength();
-			double parentalAndLeading = parentalLength + leadingLength;
+			double archLength = (bridgeParentalAndLeading) ? calcArchBridge(repliShape) + parentalLength + leadingLength : parentalLength + leadingLength;
 
 			table.setValue("T", t, t);
 			table.setValue("Time_(s)", t, timeInSeconds);
 			table.setValue("Parental_(um)", t, parentalLength*pixelSize);
-			table.setValue("Parental_(kb)", t, (lengthBps/1000)*parentalLength/parentalAndLeading);
+			table.setValue("Parental_(kb)", t, (lengthBps/1000)*parentalLength/archLength);
 			table.setValue("Leading_(um)", t, leadingLength*pixelSize);
-			table.setValue("Leading_(kb)", t, (lengthBps/1000)*leadingLength/parentalAndLeading);
+			table.setValue("Leading_(kb)", t, (lengthBps/1000)*leadingLength/archLength);
 			table.setValue("Lagging_(um)", t, laggingLength*pixelSize);
-			table.setValue("Lagging_(kb)", t, (lengthBps/1000)*laggingLength/parentalAndLeading);
-			table.setValue("Parental_and_Leading_(um)", t, parentalAndLeading*pixelSize);
-			table.setValue("Force_(pN)", t, calculator.getWLCForce(parentalAndLeading * pixelSize * Math.pow(10, -6)) * Math.pow(10, 12));
+			table.setValue("Lagging_(kb)", t, (lengthBps/1000)*laggingLength/archLength);
+			table.setValue("Arch_length_(um)", t, archLength*pixelSize);
+			table.setValue("Force_(pN)", t, calculator.getWLCForce(archLength * pixelSize * Math.pow(10, -6)) * Math.pow(10, 12));
 		}
 		if (molecule.hasShape(0)) {
 			double[] parentCenter = molecule.getShape(0).parentCenter();
@@ -301,6 +307,23 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		}
 		molecule.setTable(table);
 		return molecule;
+	}
+
+	private double calcArchBridge(ReplicationForkShape repliShape) {
+		if (repliShape.leadingLength() == 0 || repliShape.parentalLength() == 0) return 0;
+
+		double bridgeLength = Double.MAX_VALUE;
+		for (int p=0; p<repliShape.parentalX.length; p++) {
+			double parentalX = repliShape.parentalX[p];
+			double parentalY = repliShape.parentalY[p];
+			for (int l=0; l<repliShape.leadingX.length; l++) {
+				double leadingX = repliShape.leadingX[l];
+				double leadingY = repliShape.leadingY[l];
+				double distance = Math.sqrt((parentalX - leadingX)*(parentalX - leadingX) + (parentalY - leadingY)*(parentalY - leadingY));
+				if (distance < bridgeLength) bridgeLength = distance;
+			}
+		}
+		return bridgeLength;
 	}
 
 	private void parsePointsToMaps(JsonParser jParser, Map<Integer, double[]> tToXMap, Map<Integer, double[]> tToYMap, String fieldName) throws IOException {
@@ -351,8 +374,10 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			for (int i=0;i<smoothingCyclces;i++) {
 				FloatPolygon interP = r.getInterpolatedPolygon(1, false);
 				//Set end point to original location
-				interP.xpoints[interP.xpoints.length - 1] = endX;
-				interP.ypoints[interP.ypoints.length - 1] = endY;
+				if (endPointPreservation) {
+					interP.xpoints[interP.xpoints.length - 1] = endX;
+					interP.ypoints[interP.ypoints.length - 1] = endY;
+				}
 				r = smoothPolygonRoi(interP);
 			}
 		}
@@ -535,8 +560,10 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		else builder.addParameter("Dataset Name", dataset.getName());
 		builder.addParameter("Smooth labels", smooth);
 		builder.addParameter("Smoothing cyclces", smoothingCyclces);
+		builder.addParameter("Maintain endpoint positions during smoothing", endPointPreservation);
 		builder.addParameter("Label rescaling factor", labelRescalingFactor);
 		builder.addParameter("Label connectivity distance cutoff (pixel)", connectivityCutoff);
+		builder.addParameter("connect parental and leading for arch length calculation", bridgeParentalAndLeading);
 		builder.addParameter("Microscope", microscope);
 		builder.addParameter("Pixel size (um)", pixelSize);
 		builder.addParameter("DNA length (bps)", lengthBps);
