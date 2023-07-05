@@ -141,6 +141,9 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 	@Parameter(label = "Smooth labels")
 	private boolean smooth = true;
 
+	@Parameter(label = "Smoothing cycles")
+	private int smoothingCyclces = 1;
+
 	@Parameter(label = "Label rescaling factor (label coordinates / factor)")
 	private float labelRescalingFactor = 1;
 
@@ -340,14 +343,18 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			xPoints[i] = points.get(i).getX();
 			yPoints[i] = points.get(i).getY();
 		}
-
+		float endX = xPoints[xPoints.length - 1];
+		float endY = yPoints[yPoints.length - 1];
 		//Now let's do some smoothing
 		PolygonRoi r = new PolygonRoi(xPoints, yPoints, Roi.POLYLINE);
 		if (smooth) {
-			r = new PolygonRoi(r.getInterpolatedPolygon(1, false), Roi.POLYLINE);
-			r = smoothPolygonRoi(r);
-			r = new PolygonRoi(r.getInterpolatedPolygon(Math.min(2, r
-				.getNCoordinates() * 0.1), false), Roi.POLYLINE);
+			for (int i=0;i<smoothingCyclces;i++) {
+				FloatPolygon interP = r.getInterpolatedPolygon(1, false);
+				//Set end point to original location
+				interP.xpoints[interP.xpoints.length - 1] = endX;
+				interP.ypoints[interP.ypoints.length - 1] = endY;
+				r = smoothPolygonRoi(interP);
+			}
 		}
 
 		FloatPolygon fPoly = r.getFloatPolygon();
@@ -358,7 +365,6 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 			xDoublePoints[i] = fPoly.xpoints[i];
 			yDoublePoints[i] = fPoly.ypoints[i];
 		}
-
 		tToXMap.put(curT, xDoublePoints);
 		tToYMap.put(curT, yDoublePoints);
 	}
@@ -402,8 +408,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		return orderedPoints;
 	}
 
-	private PolygonRoi smoothPolygonRoi(PolygonRoi r) {
-		FloatPolygon poly = r.getFloatPolygon();
+	private PolygonRoi smoothPolygonRoi(FloatPolygon poly) {
 		FloatPolygon poly2 = new FloatPolygon();
 		int nPoints = poly.npoints;
 		poly2.addPoint(poly.xpoints[0], poly.ypoints[0]);
@@ -529,6 +534,7 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 		}
 		else builder.addParameter("Dataset Name", dataset.getName());
 		builder.addParameter("Smooth labels", smooth);
+		builder.addParameter("Smoothing cyclces", smoothingCyclces);
 		builder.addParameter("Label rescaling factor", labelRescalingFactor);
 		builder.addParameter("Label connectivity distance cutoff (pixel)", connectivityCutoff);
 		builder.addParameter("Microscope", microscope);
