@@ -82,8 +82,8 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
-		<mars-core.version>1.0.0-beta-44</mars-core.version>
-		<mars-fx.version>0.5.12</mars-fx.version>
+		<mars-core.version>1.0.0-beta-54</mars-core.version>
+		<mars-fx.version>0.6.0</mars-fx.version>
 
 		<jackson.version>2.11.2</jackson.version>
 		<jackson-core.version>${jackson.version}</jackson-core.version>
