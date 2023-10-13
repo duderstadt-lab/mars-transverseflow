@@ -32,10 +32,12 @@ package de.mpg.biochem.mars.transverseflow;
 import com.fasterxml.jackson.core.JsonParser;
 import de.mpg.biochem.mars.metadata.MarsOMEMetadata;
 import de.mpg.biochem.mars.molecule.AbstractMoleculeArchive;
+import de.mpg.biochem.mars.io.MoleculeArchiveSource;
 import de.mpg.biochem.mars.table.MarsTable;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.stream.Stream;
 
 public class TransverseFlowArchive extends
@@ -58,6 +60,32 @@ public class TransverseFlowArchive extends
 			IOException
 	{
 		super(name, file);
+	}
+
+	/**
+	 * Constructor for loading a MoleculeArchive. A yama file can be given or a
+	 * yama virtual store directory. Virtual mode will automatically be activated
+	 * if a directory is provided.
+	 *
+	 * @param uri The URI to load the archive from.
+	 * @throws IOException if there is a problem with the file location.
+	 */
+	public TransverseFlowArchive(URI uri) throws
+			IOException
+	{
+		super(uri);
+	}
+
+	/**
+	 * Constructor for loading a MoleculeArchive from a MoleculeArchiveSource.
+	 *
+	 * @param source The MoleculeArchiveSource to load the archive from.
+	 * @throws IOException if there is a problem with the file location.
+	 */
+	public TransverseFlowArchive(MoleculeArchiveSource source) throws
+			IOException
+	{
+		super(source);
 	}
 
 	public TransverseFlowArchiveProperties createProperties() {
