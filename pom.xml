@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>35.1.0</version>
+		<version>40.0.0</version>
 		<relativePath />
 	</parent>
 
@@ -82,12 +82,8 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
-		<mars-core.version>1.0.0-beta-54</mars-core.version>
-		<mars-fx.version>0.6.0</mars-fx.version>
-
-		<jackson.version>2.11.2</jackson.version>
-		<jackson-core.version>${jackson.version}</jackson-core.version>
-		<jackson-dataformat-smile.version>${jackson.version}</jackson-dataformat-smile.version>
+		<mars-core.version>1.0.0-beta-61</mars-core.version>
+		<mars-fx.version>0.6.6</mars-fx.version>
 	</properties>
 
 	<dependencies>
@@ -167,7 +163,7 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.dataformat</groupId>
 			<artifactId>jackson-dataformat-smile</artifactId>
-			<version>${jackson-dataformat-smile.version}</version>
+			<version>${jackson-core.version}</version>
 		</dependency>
 	</dependencies>
 
