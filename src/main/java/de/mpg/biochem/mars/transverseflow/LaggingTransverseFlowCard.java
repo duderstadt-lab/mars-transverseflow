@@ -34,15 +34,24 @@ import de.mpg.biochem.mars.fx.bdv.MarsBdvCard;
 import de.mpg.biochem.mars.fx.bdv.MarsBdvFrame;
 import de.mpg.biochem.mars.metadata.MarsMetadata;
 import de.mpg.biochem.mars.molecule.*;
+import de.mpg.biochem.mars.object.MartianObject;
+import de.mpg.biochem.mars.transverseflow.commands.MarsTransverseFlowIntegrationBdvCommand;
 import net.imagej.ops.Initializable;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.ARGBType;
+import org.scijava.Context;
+import org.scijava.module.ModuleService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.plugin.SciJavaPlugin;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Plugin(type = MarsBdvCard.class, name = "Lagging")
 public class LaggingTransverseFlowCard extends AbstractJsonConvertibleRecord implements
@@ -64,6 +73,12 @@ public class LaggingTransverseFlowCard extends AbstractJsonConvertibleRecord imp
 	@Parameter
 	protected MarsBdvFrame marsBdvFrame;
 
+	@Parameter
+	protected Context context;
+
+	@Parameter
+	protected ModuleService moduleService;
+
 	@Override
 	public void initialize() {
 		panel = new JPanel();
@@ -77,6 +92,40 @@ public class LaggingTransverseFlowCard extends AbstractJsonConvertibleRecord imp
 		lineThickness.setMinimumSize(dimScaleField);
 
 		panel.add(lineThickness);
+
+		JButton transverseFlowIntegrationButton = new JButton("Integrate strands");
+		transverseFlowIntegrationButton.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				ExecutorService backgroundThread = Executors.newSingleThreadExecutor();
+				backgroundThread.submit(() -> {
+					MarsTransverseFlowIntegrationBdvCommand transverseFlowIntegrationCommand = new MarsTransverseFlowIntegrationBdvCommand();
+					transverseFlowIntegrationCommand.setContext(context);
+
+					for (Window window : Window.getWindows())
+						if (window instanceof JDialog && ((JDialog) window).getTitle()
+								.equals(transverseFlowIntegrationCommand.getInfo().getLabel()) && ((JDialog) window).isVisible()) {
+							((JDialog) window).toFront();
+							((JDialog) window).repaint();
+							return;
+						}
+
+					//We set these directly to avoid pre and post processors from running
+					//we don't need that in this context
+					transverseFlowIntegrationCommand.setMarsBdvFrame(marsBdvFrame);
+					transverseFlowIntegrationCommand.setArchive(archive);
+					transverseFlowIntegrationCommand.setMolecule((TransverseFlowMolecule) molecule);
+					try {
+						moduleService.run(transverseFlowIntegrationCommand, true).get();
+					}
+					catch (InterruptedException | ExecutionException exc) {
+						exc.printStackTrace();
+					}
+				});
+				backgroundThread.shutdown();
+			}
+		});
+		panel.add(transverseFlowIntegrationButton);
 	}
 
 	@Override
