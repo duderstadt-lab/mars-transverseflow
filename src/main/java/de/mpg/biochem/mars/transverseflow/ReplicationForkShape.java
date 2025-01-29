@@ -60,7 +60,9 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
     public double[] parentalX, parentalY, leadingX, leadingY, laggingX, laggingY;
 
     //Maps from channel name to Map from x or y coordinate to intensity
-    private Map<String, Map<Integer, Double>> parentalIntensity, leadingIntensity, laggingIntensity;
+    private final Map<String, Map<Integer, Double>> parentalIntensity;
+    private final Map<String, Map<Integer, Double>> leadingIntensity;
+    private final Map<String, Map<Integer, Double>> laggingIntensity;
 
     public ReplicationForkShape(final double[] parentalX, final double[] parentalY, final double[] leadingX, final double[] leadingY, final double[] laggingX, final double[] laggingY) {
         this.parentalX = parentalX;
@@ -106,6 +108,14 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
 
     public Map<Integer, Double> getLaggingIntegrationMap(String channel) {
         return this.laggingIntensity.get(channel);
+    }
+
+    public Set<String> getIntegrationSourceNames() {
+        Set<String> sources = new HashSet<>();
+        sources.addAll(parentalIntensity.keySet());
+        sources.addAll(leadingIntensity.keySet());
+        sources.addAll(laggingIntensity.keySet());
+        return sources;
     }
 
     public double parentalLength() {

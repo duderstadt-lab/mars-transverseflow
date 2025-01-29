@@ -311,7 +311,7 @@ Initializable, Previewable
 			}
 		}
 		parentKymograph.keySet().forEach(y -> parentKymograph.put(y, parentKymograph.get(y) - parentKymographPixelCount.get(y)*medianBackgroundPixelValue));
-		molecule.getShape(t).putParentIntegrationMap(source, parentKymograph);
+		shape.putParentIntegrationMap(source, parentKymograph);
 
 		double parentSum;
 		if ( intensitiesParent.isEmpty() ) parentSum = Double.NaN;
@@ -360,7 +360,7 @@ Initializable, Previewable
 			}
 		}
 		leadingKymograph.keySet().forEach(y -> leadingKymograph.put(y, leadingKymograph.get(y) - leadingKymographPixelCount.get(y)*medianBackgroundPixelValue));
-		molecule.getShape(t).putLeadingIntegrationMap(source, leadingKymograph);
+		shape.putLeadingIntegrationMap(source, leadingKymograph);
 
 		double leadingSum;
 		if ( intensitiesleading.isEmpty() ) leadingSum = Double.NaN;
@@ -409,7 +409,7 @@ Initializable, Previewable
 			}
 		}
 		laggingKymograph.keySet().forEach(y -> laggingKymograph.put(y, laggingKymograph.get(y) - laggingKymographPixelCount.get(y)*medianBackgroundPixelValue));
-		molecule.getShape(t).putLaggingIntegrationMap(source, laggingKymograph);
+		shape.putLaggingIntegrationMap(source, laggingKymograph);
 
 		double laggingSum;
 		if ( intensitieslagging.isEmpty() ) laggingSum = Double.NaN;
