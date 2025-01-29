@@ -1,8 +1,8 @@
 /*-
  * #%L
- * JavaFX GUI for processing single-molecule TIRF and FMT data in the Structure and Dynamics of Molecular Machines research group.
+ * Mars command and definitions for transverse flow molecule types.
  * %%
- * Copyright (C) 2018 - 2025 Karl Duderstadt
+ * Copyright (C) 2023 - 2025 Karl Duderstadt
  * %%
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
