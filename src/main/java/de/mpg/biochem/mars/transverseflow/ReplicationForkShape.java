@@ -29,6 +29,8 @@
 package de.mpg.biochem.mars.transverseflow;
 
 import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -57,6 +59,9 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
 
     public double[] parentalX, parentalY, leadingX, leadingY, laggingX, laggingY;
 
+    //Maps from channel name to Map from x or y coordinate to intensity
+    private Map<String, Map<Integer, Double>> parentalIntensity, leadingIntensity, laggingIntensity;
+
     public ReplicationForkShape(final double[] parentalX, final double[] parentalY, final double[] leadingX, final double[] leadingY, final double[] laggingX, final double[] laggingY) {
         this.parentalX = parentalX;
         this.parentalY = parentalY;
@@ -64,11 +69,43 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
         this.leadingY = leadingY;
         this.laggingX = laggingX;
         this.laggingY = laggingY;
+
+        parentalIntensity = new ConcurrentHashMap<>();
+        leadingIntensity = new ConcurrentHashMap<>();
+        laggingIntensity = new ConcurrentHashMap<>();
     }
 
     public ReplicationForkShape(JsonParser jParser) throws IOException {
         super();
+        parentalIntensity = new ConcurrentHashMap<>();
+        leadingIntensity = new ConcurrentHashMap<>();
+        laggingIntensity = new ConcurrentHashMap<>();
+
         fromJSON(jParser);
+    }
+
+    public void putParentIntegrationMap(String channel, Map<Integer, Double> intensity) {
+        this.parentalIntensity.put(channel, intensity);
+    }
+
+    public Map<Integer, Double> getParentIntegrationMap(String channel) {
+        return this.parentalIntensity.get(channel);
+    }
+
+    public void putLeadingIntegrationMap(String channel, Map<Integer, Double> intensity) {
+        this.leadingIntensity.put(channel, intensity);
+    }
+
+    public Map<Integer, Double> getLeadingIntegrationMap(String channel) {
+        return this.leadingIntensity.get(channel);
+    }
+
+    public void putLaggingIntegrationMap(String channel, Map<Integer, Double> intensity) {
+        this.laggingIntensity.put(channel, intensity);
+    }
+
+    public Map<Integer, Double> getLaggingIntegrationMap(String channel) {
+        return this.laggingIntensity.get(channel);
     }
 
     public double parentalLength() {
@@ -136,7 +173,6 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
 
     @Override
     protected void createIOMaps() {
-
         //Parental
         setJsonField("parentalPoints", jGenerator -> jGenerator.writeNumberField(
                 "parentalPoints", parentalX.length), jParser -> {
@@ -162,6 +198,48 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
             while (jParser.nextToken() != JsonToken.END_ARRAY) {
                 parentalY[yIndex] = jParser.getDoubleValue();
                 yIndex++;
+            }
+        });
+
+        //parentalIntensity
+        setJsonField("parentalIntensity", jGenerator -> {
+            if (!parentalIntensity.isEmpty()) {
+                jGenerator.writeArrayFieldStart("parentalIntensity");
+                for (String source : parentalIntensity.keySet()) {
+                    for (int x : parentalIntensity.get(source).keySet()) {
+                        jGenerator.writeStartObject();
+                        jGenerator.writeStringField("source", source);
+                        jGenerator.writeNumberField("x", x);
+                        jGenerator.writeNumberField("intensity", parentalIntensity.get(source).get(x));
+                        jGenerator.writeEndObject();
+                    }
+                }
+                jGenerator.writeEndArray();
+            }
+        }, jParser -> {
+            if (jParser.currentToken().equals(JsonToken.START_ARRAY)) {
+                while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                    String source = "";
+                    int x = -1;
+                    double intensity = 0;
+                    while (jParser.nextToken() != JsonToken.END_OBJECT) {
+                        String field = jParser.getCurrentName();
+                        jParser.nextToken();
+                        switch (field) {
+                            case "source":
+                                source = jParser.getValueAsString();
+                                break;
+                            case "x":
+                                x = jParser.getValueAsInt();
+                                break;
+                            case "intensity":
+                                intensity = jParser.getValueAsDouble();
+                                break;
+                        }
+                    }
+                    if (!parentalIntensity.containsKey(source)) parentalIntensity.put(source, new HashMap<>());
+                    parentalIntensity.get(source).put(x, intensity);
+                }
             }
         });
 
@@ -193,6 +271,48 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
             }
         });
 
+        //leadingIntensity
+        setJsonField("leadingIntensity", jGenerator -> {
+            if (!leadingIntensity.isEmpty()) {
+                jGenerator.writeArrayFieldStart("leadingIntensity");
+                for (String source : leadingIntensity.keySet()) {
+                    for (int x : leadingIntensity.get(source).keySet()) {
+                        jGenerator.writeStartObject();
+                        jGenerator.writeStringField("source", source);
+                        jGenerator.writeNumberField("x", x);
+                        jGenerator.writeNumberField("intensity", leadingIntensity.get(source).get(x));
+                        jGenerator.writeEndObject();
+                    }
+                }
+                jGenerator.writeEndArray();
+            }
+        }, jParser -> {
+            if (jParser.currentToken().equals(JsonToken.START_ARRAY)) {
+                while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                    String source = "";
+                    int x = -1;
+                    double intensity = 0;
+                    while (jParser.nextToken() != JsonToken.END_OBJECT) {
+                        String field = jParser.getCurrentName();
+                        jParser.nextToken();
+                        switch (field) {
+                            case "source":
+                                source = jParser.getValueAsString();
+                                break;
+                            case "x":
+                                x = jParser.getValueAsInt();
+                                break;
+                            case "intensity":
+                                intensity = jParser.getValueAsDouble();
+                                break;
+                        }
+                    }
+                    if (!leadingIntensity.containsKey(source)) leadingIntensity.put(source, new HashMap<>());
+                    leadingIntensity.get(source).put(x, intensity);
+                }
+            }
+        });
+
         //Lagging
         setJsonField("laggingPoints", jGenerator -> jGenerator.writeNumberField(
                 "laggingPoints", laggingX.length), jParser -> {
@@ -218,6 +338,48 @@ public class ReplicationForkShape extends AbstractJsonConvertibleRecord {
             while (jParser.nextToken() != JsonToken.END_ARRAY) {
                 laggingY[yIndex] = jParser.getDoubleValue();
                 yIndex++;
+            }
+        });
+
+        //laggingIntensity
+        setJsonField("laggingIntensity", jGenerator -> {
+            if (!laggingIntensity.isEmpty()) {
+                jGenerator.writeArrayFieldStart("laggingIntensity");
+                for (String source : laggingIntensity.keySet()) {
+                    for (int y : laggingIntensity.get(source).keySet()) {
+                        jGenerator.writeStartObject();
+                        jGenerator.writeStringField("source", source);
+                        jGenerator.writeNumberField("y", y);
+                        jGenerator.writeNumberField("intensity", laggingIntensity.get(source).get(y));
+                        jGenerator.writeEndObject();
+                    }
+                }
+                jGenerator.writeEndArray();
+            }
+        }, jParser -> {
+            if (jParser.currentToken().equals(JsonToken.START_ARRAY)) {
+                while (jParser.nextToken() != JsonToken.END_ARRAY) {
+                    String source = "";
+                    int y = -1;
+                    double intensity = 0;
+                    while (jParser.nextToken() != JsonToken.END_OBJECT) {
+                        String field = jParser.getCurrentName();
+                        jParser.nextToken();
+                        switch (field) {
+                            case "source":
+                                source = jParser.getValueAsString();
+                                break;
+                            case "y":
+                                y = jParser.getValueAsInt();
+                                break;
+                            case "intensity":
+                                intensity = jParser.getValueAsDouble();
+                                break;
+                        }
+                    }
+                    if (!laggingIntensity.containsKey(source)) laggingIntensity.put(source, new HashMap<>());
+                    laggingIntensity.get(source).put(y, intensity);
+                }
             }
         });
     }

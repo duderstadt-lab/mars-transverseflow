@@ -42,6 +42,7 @@ import de.mpg.biochem.mars.transverseflow.TransverseFlowMolecule;
 import de.mpg.biochem.mars.util.LogBuilder;
 import de.mpg.biochem.mars.util.MarsUtil;
 import net.imagej.ops.OpService;
+import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
@@ -72,7 +73,9 @@ import org.scijava.ui.UIService;
 import org.scijava.util.DoubleArray;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -140,7 +143,7 @@ Initializable, Previewable
 	@Parameter(label = " height")
 	private int height = 1024;
 
-	private ConcurrentMap<Integer, Double> tToPixelMedianBackground, tToParentSum, tToLeadSum, tToLagSum, tToParentIntensity, tToLeadIntensity, tToLagIntensity;
+	private ConcurrentMap<Integer, Double> tToPixelMedianBackground, tToParentSum, tToLeadingSum, tToLaggingSum, tToParentIntensity, tToLeadingIntensity, tToLaggingIntensity;
 
 	private AtomicInteger progressInteger = new AtomicInteger(0);
 
@@ -163,7 +166,7 @@ Initializable, Previewable
 		imgInterval = Intervals.createMinMax(X0, Y0, X0 + width - 1,
 				Y0 + height - 1);
 
-		//One background calculation for all
+		//background
 		tToPixelMedianBackground = new ConcurrentHashMap<>();
 
 		//Parent
@@ -171,12 +174,12 @@ Initializable, Previewable
 		tToParentIntensity = new ConcurrentHashMap<>();
 
 		//Lead
-		tToLeadSum = new ConcurrentHashMap<>();
-		tToLeadIntensity = new ConcurrentHashMap<>();
+		tToLeadingSum = new ConcurrentHashMap<>();
+		tToLeadingIntensity = new ConcurrentHashMap<>();
 
 		//Lag
-		tToLagSum = new ConcurrentHashMap<>();
-		tToLagIntensity = new ConcurrentHashMap<>();
+		tToLaggingSum = new ConcurrentHashMap<>();
+		tToLaggingIntensity = new ConcurrentHashMap<>();
 
 		List<Runnable> tasks = new ArrayList<>();
 		for (int t : molecule.getShapeKeys()) tasks.add(() -> integrateStrandInT(t));
@@ -191,10 +194,10 @@ Initializable, Previewable
             row.setValue(source + "_Median_Background_Pixel", tToPixelMedianBackground.getOrDefault(theT, Double.NaN));
 			row.setValue(source + "_Parent_Sum_Pixels", tToParentSum.getOrDefault(theT, Double.NaN));
 			row.setValue(source + "_Parent_Intensity", tToParentIntensity.getOrDefault(theT, Double.NaN));
-			row.setValue(source + "_Lead_Sum_Pixels", tToLeadSum.getOrDefault(theT, Double.NaN));
-			row.setValue(source + "_Lead_Intensity", tToLeadIntensity.getOrDefault(theT, Double.NaN));
-			row.setValue(source + "_Lag_Sum_Pixels", tToLagSum.getOrDefault(theT, Double.NaN));
-			row.setValue(source + "_Lag_Intensity", tToLagIntensity.getOrDefault(theT, Double.NaN));
+			row.setValue(source + "_Lead_Sum_Pixels", tToLeadingSum.getOrDefault(theT, Double.NaN));
+			row.setValue(source + "_Lead_Intensity", tToLeadingIntensity.getOrDefault(theT, Double.NaN));
+			row.setValue(source + "_Lag_Sum_Pixels", tToLaggingSum.getOrDefault(theT, Double.NaN));
+			row.setValue(source + "_Lag_Intensity", tToLaggingIntensity.getOrDefault(theT, Double.NaN));
 		});
 
 		LogBuilder builder = new LogBuilder();
@@ -272,7 +275,8 @@ Initializable, Previewable
 		final double medianBackgroundPixelValue = Double.valueOf( backgroundPixels.getArray()[ backgroundPixels.size() / 2 ] );
 		tToPixelMedianBackground.put(t, medianBackgroundPixelValue);
 
-		//Sum pixels inside parent
+
+		//PARENT
 		double[] parentShapeX = new double[shape.parentalX.length*2];
 		double[] parentShapeY = new double[shape.parentalY.length*2];
 		for (int i=0; i < shape.parentalX.length; i++) {
@@ -285,34 +289,140 @@ Initializable, Previewable
 
 		final WritablePolygon2D polygonParent = GeomMasks.closedPolygon2D(parentShapeX, parentShapeY);
 		final IterableRegion<BoolType> regionParent = Masks.toIterableRegion(polygonParent);
-		IterableInterval<T> neighborhood = Regions.sample(regionParent, Views.extendMirrorDouble(img));
+		Cursor<T> neighborhoodParent = Regions.sample(regionParent, Views.extendMirrorDouble(img)).localizingCursor();
+
 		final DoubleArray intensitiesParent = new DoubleArray();
-		for ( final T pixel : neighborhood )
+		final Map<Integer, Double> parentKymograph = new HashMap<>();
+		final Map<Integer, Integer> parentKymographPixelCount = new HashMap<>();
+		while(neighborhoodParent.hasNext())
 		{
-			final double val = pixel.getRealDouble();
+			final double val = neighborhoodParent.next().getRealDouble();
+			final int x = neighborhoodParent.getIntPosition(0);
+			//final int y = neighborhoodParent.getIntPosition(1);
 			if ( Double.isNaN( val ) )
 				continue;
 			intensitiesParent.addValue( val );
+			if (parentKymograph.containsKey(x)) {
+				parentKymograph.put(x, val + parentKymograph.get(x));
+				parentKymographPixelCount.put(x, parentKymographPixelCount.get(x) + 1);
+			} else {
+				parentKymograph.put(x, val);
+				parentKymographPixelCount.put(x, 1);
+			}
 		}
+		parentKymograph.keySet().forEach(y -> parentKymograph.put(y, parentKymograph.get(y) - parentKymographPixelCount.get(y)*medianBackgroundPixelValue));
+		molecule.getShape(t).putParentIntegrationMap(source, parentKymograph);
 
-		double sum;
-		if ( intensitiesParent.isEmpty() ) sum = Double.NaN;
+		double parentSum;
+		if ( intensitiesParent.isEmpty() ) parentSum = Double.NaN;
 		else
 		{
-			sum = 0;
+			parentSum = 0;
 			for ( int i = 0; i < intensitiesParent.size(); i++ )
-				sum += intensitiesParent.getArray()[ i ];
+				parentSum += intensitiesParent.getArray()[ i ];
 		}
-		tToParentSum.put(t, sum);
-		tToParentIntensity.put(t, Double.valueOf( sum - medianBackgroundPixelValue * intensitiesParent.size() ));
+		tToParentSum.put(t, parentSum);
+		tToParentIntensity.put(t, Double.valueOf( parentSum - medianBackgroundPixelValue * intensitiesParent.size() ));
 
-		//TODO add lead and lagg...
+
+		//LEADING
+		double[] leadingShapeX = new double[shape.leadingX.length*2];
+		double[] leadingShapeY = new double[shape.leadingY.length*2];
+		for (int i=0; i < shape.leadingX.length; i++) {
+			leadingShapeX[i] = shape.leadingX[i];
+			leadingShapeX[shape.leadingX.length*2 - i - 1] = shape.leadingX[i];
+
+			leadingShapeY[i] = shape.leadingY[i] - strandRadius;
+			leadingShapeY[shape.leadingY.length*2 - i - 1] = shape.leadingY[i] + strandRadius;
+		}
+
+		final WritablePolygon2D polygonleading = GeomMasks.closedPolygon2D(leadingShapeX, leadingShapeY);
+		final IterableRegion<BoolType> regionleading = Masks.toIterableRegion(polygonleading);
+		Cursor<T> neighborhoodleading = Regions.sample(regionleading, Views.extendMirrorDouble(img)).localizingCursor();
+
+		final DoubleArray intensitiesleading = new DoubleArray();
+		final Map<Integer, Double> leadingKymograph = new HashMap<>();
+		final Map<Integer, Integer> leadingKymographPixelCount = new HashMap<>();
+		while(neighborhoodleading.hasNext())
+		{
+			final double val = neighborhoodleading.next().getRealDouble();
+			final int x = neighborhoodleading.getIntPosition(0);
+			//final int y = neighborhoodleading.getIntPosition(1);
+			if ( Double.isNaN( val ) )
+				continue;
+			intensitiesleading.addValue( val );
+			if (leadingKymograph.containsKey(x)) {
+				leadingKymograph.put(x, val + leadingKymograph.get(x));
+				leadingKymographPixelCount.put(x, leadingKymographPixelCount.get(x) + 1);
+			} else {
+				leadingKymograph.put(x, val);
+				leadingKymographPixelCount.put(x, 1);
+			}
+		}
+		leadingKymograph.keySet().forEach(y -> leadingKymograph.put(y, leadingKymograph.get(y) - leadingKymographPixelCount.get(y)*medianBackgroundPixelValue));
+		molecule.getShape(t).putLeadingIntegrationMap(source, leadingKymograph);
+
+		double leadingSum;
+		if ( intensitiesleading.isEmpty() ) leadingSum = Double.NaN;
+		else
+		{
+			leadingSum = 0;
+			for ( int i = 0; i < intensitiesleading.size(); i++ )
+				leadingSum += intensitiesleading.getArray()[ i ];
+		}
+		tToLeadingSum.put(t, leadingSum);
+		tToLeadingIntensity.put(t, Double.valueOf( leadingSum - medianBackgroundPixelValue * intensitiesParent.size() ));
+
+
+		//LAGGING
+		double[] laggingShapeX = new double[shape.laggingX.length*2];
+		double[] laggingShapeY = new double[shape.laggingY.length*2];
+		for (int i=0; i < shape.laggingY.length; i++) {
+			laggingShapeY[i] = shape.laggingY[i];
+			laggingShapeY[shape.laggingY.length*2 - i - 1] = shape.laggingY[i];
+
+			laggingShapeX[i] = shape.laggingX[i] - strandRadius;
+			laggingShapeX[shape.laggingX.length*2 - i - 1] = shape.laggingX[i] + strandRadius;
+		}
+
+		final WritablePolygon2D polygonlagging = GeomMasks.closedPolygon2D(laggingShapeX, laggingShapeY);
+		final IterableRegion<BoolType> regionlagging = Masks.toIterableRegion(polygonlagging);
+		Cursor<T> neighborhoodlagging = Regions.sample(regionlagging, Views.extendMirrorDouble(img)).localizingCursor();
+
+		final DoubleArray intensitieslagging = new DoubleArray();
+		final Map<Integer, Double> laggingKymograph = new HashMap<>();
+		final Map<Integer, Integer> laggingKymographPixelCount = new HashMap<>();
+		while(neighborhoodlagging.hasNext())
+		{
+			final double val = neighborhoodlagging.next().getRealDouble();
+			//final int x = neighborhoodlagging.getIntPosition(0);
+			final int y = neighborhoodlagging.getIntPosition(1);
+			if ( Double.isNaN( val ) )
+				continue;
+			intensitieslagging.addValue( val );
+			if (laggingKymograph.containsKey(y)) {
+				laggingKymograph.put(y, val + laggingKymograph.get(y));
+				laggingKymographPixelCount.put(y, laggingKymographPixelCount.get(y) + 1);
+			} else {
+				laggingKymograph.put(y, val);
+				laggingKymographPixelCount.put(y, 1);
+			}
+		}
+		laggingKymograph.keySet().forEach(y -> laggingKymograph.put(y, laggingKymograph.get(y) - laggingKymographPixelCount.get(y)*medianBackgroundPixelValue));
+		molecule.getShape(t).putLaggingIntegrationMap(source, laggingKymograph);
+
+		double laggingSum;
+		if ( intensitieslagging.isEmpty() ) laggingSum = Double.NaN;
+		else
+		{
+			laggingSum = 0;
+			for ( int i = 0; i < intensitieslagging.size(); i++ )
+				laggingSum += intensitieslagging.getArray()[ i ];
+		}
+		tToLaggingSum.put(t, laggingSum);
+		tToLaggingIntensity.put(t, Double.valueOf( laggingSum - medianBackgroundPixelValue * intensitiesParent.size() ));
 
 		progressInteger.incrementAndGet();
-	}
-
-	private void sumPixels(double[] x, double[] y) {
-
 	}
 
 	private void addInputParameterLog(LogBuilder builder) {
