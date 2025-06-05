@@ -11,7 +11,7 @@
 
 	<groupId>de.mpg.biochem</groupId>
 	<artifactId>mars-transverseflow</artifactId>
-	<version>0.2.1-SNAPSHOT</version>
+	<version>0.3.1-SNAPSHOT</version>
 
 	<name>mars-transverseflow</name>
 	<description>Mars command and definitions for transverse flow molecule types.</description>
