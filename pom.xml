@@ -90,7 +90,7 @@
 		<maven.compiler.target>21</maven.compiler.target>
 
 		<mars-core.version>1.0.5</mars-core.version>
-		<mars-fx.version>2.2.1</mars-fx.version>
+		<mars-fx.version>2.2.2</mars-fx.version>
 	</properties>
 
 	<dependencies>
