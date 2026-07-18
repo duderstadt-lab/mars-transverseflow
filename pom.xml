@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>40.0.0</version>
+		<version>45.1.0</version>
 		<relativePath />
 	</parent>
 
@@ -89,8 +89,8 @@
 		<maven.compiler.source>21</maven.compiler.source>
 		<maven.compiler.target>21</maven.compiler.target>
 
-		<mars-core.version>1.0.0</mars-core.version>
-		<mars-fx.version>2.0.0</mars-fx.version>
+		<mars-core.version>1.0.5</mars-core.version>
+		<mars-fx.version>2.2.1</mars-fx.version>
 	</properties>
 
 	<dependencies>
@@ -151,10 +151,6 @@
 		</dependency>
 		<dependency>
 			<groupId>sc.fiji</groupId>
-			<artifactId>bigdataviewer-vistools</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>sc.fiji</groupId>
 			<artifactId>spim_data</artifactId>
 		</dependency>
 
@@ -170,7 +166,6 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.dataformat</groupId>
 			<artifactId>jackson-dataformat-smile</artifactId>
-			<version>${jackson-core.version}</version>
 		</dependency>
 	</dependencies>
 
