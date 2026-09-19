@@ -70,7 +70,7 @@ import java.awt.event.ActionListener;
 import java.awt.Window;
 import java.util.concurrent.*;
 
-@Plugin(type = MarsBdvCard.class, name = "DNA-Overlay")
+@Plugin(type = MarsBdvCard.class, name = "Arch-Overlay")
 public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord implements
         MarsBdvCard, SciJavaPlugin, Initializable
 {
@@ -502,7 +502,7 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
 
     @Override
     public String getName() {
-        return "DNA-Overlay";
+        return "Arch-Overlay";
     }
 
     @Override
