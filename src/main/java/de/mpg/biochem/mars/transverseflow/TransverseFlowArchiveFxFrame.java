@@ -68,9 +68,15 @@ public class TransverseFlowArchiveFxFrame extends
 		return new TransverseFlowTab(context);
 	}
 
-	@Override
-	public MarsBdvFrame createMarsBdvFrame(boolean useVolatile) {
+	private List<MarsBdvCard> createDefaultCards() {
 		List<MarsBdvCard> cards = new ArrayList<MarsBdvCard>();
+
+		// Arch + branch drawing first so it sits above the strand cards
+		DNAMoleculeTransverseFlowCard archCard = new DNAMoleculeTransverseFlowCard();
+		context.inject(archCard);
+		archCard.setArchive(archive);
+		archCard.initialize();
+		cards.add(archCard);
 
 		//Parental
 		ParentalTransverseFlowCard parentalCard = new ParentalTransverseFlowCard();
@@ -93,15 +99,14 @@ public class TransverseFlowArchiveFxFrame extends
 		laggingCard.initialize();
 		cards.add(laggingCard);
 
-        // Branch + Arch Drawer
-        DNAMoleculeTransverseFlowCard dnaMoleculeTransverseFlowCard = new DNAMoleculeTransverseFlowCard();
-        context.inject(dnaMoleculeTransverseFlowCard);
-        dnaMoleculeTransverseFlowCard.setArchive(archive);
-        dnaMoleculeTransverseFlowCard.initialize();
-        cards.add(dnaMoleculeTransverseFlowCard);
+		return cards;
+	}
 
+	@Override
+	public MarsBdvFrame createMarsBdvFrame(boolean useVolatile) {
 		return new MarsBdvFrame(archive, moleculesTab.getSelectedMolecule(),
-			imageMetadataTab.getSelectedMetadata(), useVolatile, cards, context);
+			imageMetadataTab.getSelectedMetadata(), useVolatile,
+			createDefaultCards(), context);
 	}
 
 	@Override
@@ -110,7 +115,8 @@ public class TransverseFlowArchiveFxFrame extends
 	{
 		try {
 			return new MarsBdvFrame(jParser, archive, moleculesTab
-				.getSelectedMolecule(), imageMetadataTab.getSelectedMetadata(), useVolatile, context);
+				.getSelectedMolecule(), imageMetadataTab.getSelectedMetadata(),
+				useVolatile, createDefaultCards(), context);
 		}
 		catch (IOException e) {
 			// have a nice error dialog show up to alert the user there is an issue.
