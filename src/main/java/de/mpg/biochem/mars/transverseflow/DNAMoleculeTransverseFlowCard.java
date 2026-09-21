@@ -254,15 +254,17 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
                                 new RoverConfirmationDialog(((AbstractMoleculeArchiveFxFrame<?, ?>) archive.getWindow()).getNode().getScene().getWindow(),
                                         "Append selected branches to MarsTable?", "Yes", "No");
                         addDNAMoleculesToArchive.showAndWait().ifPresent(result -> {
-                            if (result.getButtonData().isDefaultButton()) {
-                                try {
-                                    appendBranchDNARecord(segments);
-                                } catch (Exception e) {
-                                    RoverErrorDialog alert = new RoverErrorDialog(((AbstractMoleculeArchiveFxFrame<?, ?>) archive.getWindow()).getNode().getScene().getWindow(),
-                                            e.getMessage());
-                                    alert.show();
-                                }
-                            }
+                            if (result.getButtonData().isDefaultButton())
+                                // runTask locks the archive and fires the unlock event on
+                                // completion so the molecule list and tables refresh.
+                                ((AbstractMoleculeArchiveFxFrame<?, ?>) archive.getWindow())
+                                        .runTask(() -> {
+                                            try {
+                                                appendBranchDNARecord(segments);
+                                            } catch (Exception e) {
+                                                showError(e.getMessage());
+                                            }
+                                        }, "Appending branches...");
                         });
                     });
                 }
@@ -364,7 +366,6 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
             dnaMolecule.setParameter("Arch_Length", archLength);
             dnaMolecule.setParameter("Arch_BpLength", dnaLength);
             dnaMolecule.addTag("Bdv Draw DNA");
-            dnaMolecule.setNotes("DnaMolecule created on " + new java.util.Date() + " by the Bdv Draw DNA");
             //add to archive
             archive.put(dnaMolecule);
             //should add something to the archive log ... logService.info("Added DnaMolecule record " + dnaMolecule.getUID());
@@ -396,7 +397,8 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
         MarsTable branchMoleculeTable = findBranchDNAOnTheArch(dnaMolecule, segments);
         // If no branches are located around the selected arch DNA, just ignore it.
         if (branchMoleculeTable.getRowCount() < 1) {
-            logService.info("No branch was found in the vicinity of the selected arch DNA molecule.");
+            showError("No branch starts within " + cutoffLength + " pixels of the selected arch DNA. "
+                    + "Start each branch on the arch or increase the cutoff.");
             return;
         }
 
@@ -420,9 +422,18 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
         for (int icol = 0; icol < branchMoleculeTable.getColumnCount(); ++icol) {
             dnaMoleculeTable.add(branchMoleculeTable.get(icol));
         }
-        //molecule.addTag("Bdv Draw Branch");
         dnaMolecule.addTag("Bdv Draw Branch");
-        archive.getWindow().unlock();
+        archive.put(dnaMolecule);
+
+        // Redraw the overlay with the new branches; the editor cleared its own.
+        setMolecule(dnaMolecule);
+        marsBdvFrame.getBdvHandle().getViewerPanel().getDisplay().repaint();
+    }
+
+    private void showError(String message) {
+        Platform.runLater(() -> new RoverErrorDialog(
+                ((AbstractMoleculeArchiveFxFrame<?, ?>) archive.getWindow()).getNode().getScene().getWindow(),
+                message).show());
     }
 
     private MarsTable findBranchDNAOnTheArch(Molecule dnaMolecule, Map<Integer, DNASegment> segments) {
