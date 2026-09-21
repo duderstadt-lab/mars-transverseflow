@@ -71,13 +71,6 @@ public class TransverseFlowArchiveFxFrame extends
 	private List<MarsBdvCard> createDefaultCards() {
 		List<MarsBdvCard> cards = new ArrayList<MarsBdvCard>();
 
-		// Arch + branch drawing first so it sits above the strand cards
-		DNAMoleculeTransverseFlowCard archCard = new DNAMoleculeTransverseFlowCard();
-		context.inject(archCard);
-		archCard.setArchive(archive);
-		archCard.initialize();
-		cards.add(archCard);
-
 		//Parental
 		ParentalTransverseFlowCard parentalCard = new ParentalTransverseFlowCard();
 		context.inject(parentalCard);
@@ -98,6 +91,13 @@ public class TransverseFlowArchiveFxFrame extends
 		laggingCard.setArchive(archive);
 		laggingCard.initialize();
 		cards.add(laggingCard);
+
+		// Branch + Arch Drawer
+		DNAMoleculeTransverseFlowCard archCard = new DNAMoleculeTransverseFlowCard();
+		context.inject(archCard);
+		archCard.setArchive(archive);
+		archCard.initialize();
+		cards.add(archCard);
 
 		return cards;
 	}
