@@ -293,7 +293,7 @@ public class DNAMoleculeTransverseFlowCard extends AbstractJsonConvertibleRecord
         });
         panel.add(removeBranchDNA);
 
-        JButton clearBranchDNAs = new JButton("Clear all Branch");
+        JButton clearBranchDNAs = new JButton("Clear all Branches");
         clearBranchDNAs.addActionListener((ActionEvent e) -> {
             if (dynamicLineEditor != null) {
                 dynamicLineEditor.getSegments().clear();
