@@ -271,14 +271,32 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 				"Leading_(um)", "Leading_(kb)",
 				"Lagging_(um)", "Lagging_(kb)",
 				"Arch_length_(um)", "Force_(pN)");
-		table.appendRows(sizeT);
+
+		// Only rows up to the last labeled frame are created, so that the row
+		// index always equals T. Frames after the last label were not annotated.
+		int lastLabeledT = -1;
+		for (int t = 0; t < sizeT; t++)
+			if (parentalXMap.containsKey(t) && parentalYMap.containsKey(t)) lastLabeledT = t;
+
+		TransverseFlowMolecule molecule = new TransverseFlowMolecule();
+		if (lastLabeledT < 0) return molecule;
+
+		table.appendRows(lastLabeledT + 1);
 
 		ForceCalculator calculator = new ForceCalculator(50 * Math.pow(10, -9),
 				lengthBps*0.34 * Math.pow(10, -9), 296.15);
 
-		TransverseFlowMolecule molecule = new TransverseFlowMolecule();
-		for (int t = 0; t < sizeT; t++) {
-            if (!parentalXMap.containsKey(t) || !parentalYMap.containsKey(t)) continue;
+		for (int t = 0; t <= lastLabeledT; t++) {
+			double timeInSeconds = archive.getMetadata(0).getImage(0).getPlane(0, 0, t).getDeltaTinSeconds();
+			table.setValue("T", t, t);
+			table.setValue("Time_(s)", t, timeInSeconds);
+
+			// Unlabeled frames inside the labeled range are non-observations.
+			if (!parentalXMap.containsKey(t) || !parentalYMap.containsKey(t)) {
+				for (String col : table.getColumnHeadings())
+					if (!col.equals("T") && !col.equals("Time_(s)")) table.setValue(col, t, Double.NaN);
+				continue;
+			}
 			ReplicationForkShape repliShape = new ReplicationForkShape(parentalXMap.get(t), parentalYMap.get(t),
 					(leadingXMap.containsKey(t)) ? leadingXMap.get(t) : new double[0],
 					(leadingYMap.containsKey(t)) ? leadingYMap.get(t) : new double[0],
@@ -286,15 +304,12 @@ public class TransverseFlowArchiveBuilderCommand extends DynamicCommand implemen
 					(laggingYMap.containsKey(t)) ? laggingYMap.get(t) : new double[0]
 			);
 			molecule.putShape(t, repliShape);
-			double timeInSeconds = archive.getMetadata(0).getImage(0).getPlane(0, 0, t).getDeltaTinSeconds();
 			//These lengths are in pixels..
 			double parentalLength = repliShape.parentalLength();
 			double leadingLength = repliShape.leadingLength();
 			double laggingLength = repliShape.laggingLength();
 			double archLength = (bridgeParentalAndLeading) ? calcArchBridge(repliShape) + parentalLength + leadingLength : parentalLength + leadingLength;
 
-			table.setValue("T", t, t);
-			table.setValue("Time_(s)", t, timeInSeconds);
 			table.setValue("Parental_(um)", t, parentalLength*pixelSize);
 			table.setValue("Parental_(kb)", t, (lengthBps/1000)*parentalLength/archLength);
 			table.setValue("Leading_(um)", t, leadingLength*pixelSize);
